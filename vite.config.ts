@@ -54,7 +54,10 @@ self.addEventListener('fetch', (event) => {
 function publicFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = resolve(directory, entry.name);
-    return entry.isDirectory() ? publicFiles(path) : [`/${relative(resolve(process.cwd(), 'public'), path).replaceAll('\\', '/')}`];
+    if (entry.isDirectory()) return publicFiles(path);
+    const file = relative(resolve(process.cwd(), 'public'), path).replaceAll('\\', '/');
+    // Azure Static Web Apps consumes this deployment-only file; it is not a public URL.
+    return file === 'staticwebapp.config.json' ? [] : [`/${file}`];
   });
 }
 

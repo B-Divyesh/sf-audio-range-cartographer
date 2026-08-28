@@ -73,6 +73,8 @@ test('precache survives an HTTP-cache eviction before an offline reload', async 
   });
   expect(cachedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.js$/));
   expect(cachedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.css$/));
+  // Azure consumes this deployment configuration instead of publishing it.
+  expect(cachedPaths).not.toContain('/staticwebapp.config.json');
 
   // This is the verifier's P1 reproduction: preserve Cache API/SW storage,
   // clear only the ordinary HTTP cache, then reload with the network disabled.
