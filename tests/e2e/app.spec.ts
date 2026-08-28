@@ -48,9 +48,12 @@ test('restores and verifies a one-time Pro license', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('sb_license:audio-range-cartographer'))).toBe('license_test_123');
 });
 
-test('has no serious accessibility violations on editor and legal page', async ({ page }, testInfo) => {
+test('has no serious accessibility violations with interactive markers and on the legal page', async ({ page }) => {
   await page.goto('/');
-  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Start blank' }).click();
+  await page.getByRole('button', { name: 'Start blank' }).click();
+  await page.getByRole('button', { name: /Add emitter/ }).click();
+  await expect(page.getByRole('group', { name: /interactive audibility map/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Emitter 1.*maximum range/i })).toBeVisible();
   const editor = await new AxeBuilder({ page }).analyze();
   expect(editor.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
   await page.goto('/privacy');
@@ -89,5 +92,5 @@ test('precache survives an HTTP-cache eviction before an offline reload', async 
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.getByText('Offline · changes stay local')).toBeAttached();
+  await expect(page.getByText('Offline · changes stay local')).toBeVisible();
 });

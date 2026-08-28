@@ -128,7 +128,7 @@ export class App {
       </g>`;
     }).join('');
     const empty = this.onboarding ? `<div class="onboarding"><picture><source srcset="/assets/range-landscape-768.webp 768w, /assets/range-landscape-1200.webp 1200w" type="image/webp"><img src="/assets/range-landscape-768.jpg" width="768" height="512" alt="Abstract glass level with luminous, overlapping sonar ranges" fetchpriority="high" decoding="async"></picture><div class="onboarding-copy"><p class="eyebrow">Your level, made audible</p><h2>Map a first soundscape in minutes</h2><p>Start with a realistic example, import engine coordinates, or open a clean ${width} × ${height} ${escapeHtml(this.project.unit)} field.</p><div><button class="button primary" type="button" data-onboard="sample">Explore sample</button><button class="button ghost" type="button" data-onboard="blank">Start blank</button><label class="button ghost file-button" for="file-input">Import scene</label></div></div></div>` : this.project.emitters.length === 0 ? `<div class="map-empty"><span aria-hidden="true">◎</span><strong>No emitters yet</strong><p>Click anywhere on the grid or use “Add emitter”.</p></div>` : '';
-    map.innerHTML = `<svg class="range-map" id="range-map" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="map-svg-title map-svg-desc"><title id="map-svg-title">${escapeHtml(this.project.title)} audibility map</title><desc id="map-svg-desc">${this.project.emitters.length} emitters on a ${width} by ${height} ${escapeHtml(this.project.unit)} field. Select markers for details; findings are listed after the map.</desc><rect class="map-bg" width="${width}" height="${height}"/><g class="grid">${gridLines}</g>${emitters}<rect class="map-border" x="0" y="0" width="${width}" height="${height}"/></svg>${empty}`;
+    map.innerHTML = `<svg class="range-map" id="range-map" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" role="group" aria-labelledby="map-svg-title map-svg-desc"><title id="map-svg-title">${escapeHtml(this.project.title)} interactive audibility map</title><desc id="map-svg-desc">${this.project.emitters.length} emitters on a ${width} by ${height} ${escapeHtml(this.project.unit)} field. Select markers for details; findings are listed after the map. Click an empty area to place an emitter.</desc><rect class="map-bg" width="${width}" height="${height}"/><g class="grid">${gridLines}</g>${emitters}<rect class="map-border" x="0" y="0" width="${width}" height="${height}"/></svg>${empty}`;
     this.bindMap();
   }
 
@@ -286,8 +286,16 @@ export class App {
   }
 
   private setupOffline(): void {
-    const update = () => { const badge = this.root.querySelector<HTMLElement>('#network-state'); if (badge) badge.hidden = navigator.onLine; };
-    update(); window.addEventListener('online', update); window.addEventListener('offline', update);
+    const setBadge = (offline: boolean) => { const badge = this.root.querySelector<HTMLElement>('#network-state'); if (badge) badge.hidden = !offline; };
+    // navigator.onLine can remain true after a service-worker cache recovery. Probe the
+    // same-origin app shell without using its cache so the offline indicator reflects
+    // whether a fresh request can actually reach the network.
+    const update = async () => {
+      if (!navigator.onLine) { setBadge(true); return; }
+      try { setBadge(!(await fetch('/?arc-connectivity=1', { cache: 'no-store' })).ok); }
+      catch { setBadge(true); }
+    };
+    void update(); window.addEventListener('online', () => { void update(); }); window.addEventListener('offline', () => setBadge(true));
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then((registration) => { registration.addEventListener('updatefound', () => { const worker = registration.installing; worker?.addEventListener('statechange', () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) this.announce('An app update is ready. Reload to use it.', 'info', 'Reload', () => location.reload()); }); }); }).catch(() => { if (!location.hostname.includes('localhost')) this.announce('Offline installation is temporarily unavailable.', 'info'); });
   }
 }
