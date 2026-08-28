@@ -109,7 +109,7 @@ textarea { resize: vertical; min-height: 74px; }
 .emitter-list button:hover { background: var(--surface-2); }
 .emitter-list button > span:nth-child(2) { display: grid; }
 .emitter-list small { color: var(--muted); font: 12px var(--mono); }
-.color-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 8px var(--dot); }
+.color-dot { display: block; width: 10px; height: 10px; overflow: visible; }
 .inspector-hint { margin: 4px 16px 18px; color: var(--muted); font-size: 13px; }
 .inspector-empty { min-height: 160px; display: grid; place-content: center; justify-items: center; padding: 24px; color: var(--muted); text-align: center; }
 .inspector-empty span { font-size: 35px; color: var(--accent); }.inspector-empty p { max-width: 230px; }

@@ -56,6 +56,9 @@ test('has no serious accessibility violations with interactive markers and on th
   await expect(page.getByRole('button', { name: /Emitter 1.*maximum range/i })).toBeVisible();
   const editor = await new AxeBuilder({ page }).analyze();
   expect(editor.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
+  await page.getByRole('button', { name: 'Close emitter inspector' }).click();
+  await expect(page.locator('.color-dot circle')).toHaveAttribute('fill', '#65F4D0');
+  expect(await page.locator('[style]').count()).toBe(0);
   await page.goto('/privacy');
   const privacy = await new AxeBuilder({ page }).analyze();
   expect(privacy.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);

@@ -34,6 +34,10 @@ artifacts and are now ignored. The shipped artifact remains the static PWA in `d
   connectivity probe detects a service-worker cache recovery, and the mobile CSS shows
   the badge whenever it is not hidden. The regression clears only Chromium's HTTP cache,
   goes offline, reloads from Cache API, and requires the badge to be visible.
+- A post-deploy persisted-project check found that emitter color dots used an inline
+  custom-property style, which the production `style-src 'self'` CSP blocked. Color dots
+  now use a safe SVG `fill` presentation attribute. The populated-map regression asserts
+  the rendered color and requires zero inline `style` attributes, without weakening CSP.
 
 ## Clean local verification — 2026-08-28 UTC
 
@@ -47,10 +51,10 @@ artifacts and are now ignored. The shipped artifact remains the static PWA in `d
 | Keyboard and mobile | PASS; arrow-key marker movement changes X 50 → 51; mobile suite has the same workflow and no overflow regression |
 | Integration/error/privacy/license | PASS; sample edit/export, malformed-import recovery, mocked Sociobot token verification and URL stripping, and legal-page scan |
 | Cache-cleared offline reload | PASS; generated cache contains hashed JS/CSS, HTTP cache was cleared, offline reload rendered the h1 and visible `Offline · changes stay local` badge |
-| Two-build update flow | PASS; cache changed from `arc-84f8c0bfcc01` to `arc-684a97ac5fc7`; update toast and Reload action appeared; 0 console/page errors |
+| Two-build update flow | PASS; cache changed from `arc-77953b3f65ec` to `arc-5e4305cdb2f0`; update toast and Reload action appeared; 0 console/page errors |
 | `/opt/fleet/lib/verify-url.sh` on production preview | PASS; title/lang, one h1, main, alt text, labelled buttons; 0 console/page errors |
-| Lighthouse 13.4.1 mobile, production preview | PASS; Performance 97, Accessibility 100, Best Practices 100, SEO 100; LCP 1,743 ms, CLS 0, TBT 174 ms |
-| Static budgets | PASS; JS 41,482 B (14,050 B gzip), CSS 16,391 B (4,520 B gzip), largest image 83,930 B |
+| Lighthouse 13.4.1 mobile, production preview | PASS; Performance 100, Accessibility 100, Best Practices 100, SEO 100; LCP 1,733 ms, CLS 0, TBT 0 ms |
+| Static budgets | PASS; JS 41,563 B (14,070 B gzip), CSS 16,352 B (4,510 B gzip), largest image 83,930 B |
 
 The Playwright suite uses the required pinned `@playwright/test` 1.58.2. The service
 worker precaches 18 shell entries including the emitted hashed JavaScript and CSS,
