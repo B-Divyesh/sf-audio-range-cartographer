@@ -63,14 +63,28 @@ stale `arc-*` caches, claims clients, and exposes the in-app update path.
 
 ## Deployment and live verification
 
+Deployed source commit: `f8f652f`
+
+Deployment ID: `60e1a7be-aa54-484e-a00f-8c93c718cbc6`
+
 Deployment command:
 
 ```sh
 /opt/fleet/lib/deploy-static.sh audio-range-cartographer dist
 ```
 
-The final live asset hashes, response-policy checks, cache-backed offline result, axe
-result, and `verify-url.sh` evidence are recorded below after deployment.
+The Azure upload succeeded, the custom domain was `Ready`, and HTTPS returned 200.
+
+| Live check | Result |
+| --- | --- |
+| Deployment identity | PASS; live `/assets/index-CsC1k4mu.js` SHA-256 `1fd54a9b9c47fed9e2d3031bdeb4e4d35e1be2adbde126aba71ccbdd3a866f6e` exactly matches local |
+| Stylesheet identity | PASS; live `/assets/index-C4_-lMJw.css` SHA-256 `dfdb34f284ad84fa3e7bee8708a62ac5ecbd5916946c952a0a89a22047e97dbd` exactly matches local |
+| Endpoint/response policy | PASS; `/`, `/sw.js`, `/manifest.webmanifest`, `/privacy`, `/terms`, JS, and CSS return 200; manifest MIME is `application/manifest+json`; hashed assets are one-year immutable; shell/worker/manifest revalidate after 30 seconds; CSP and security headers present |
+| Desktop + 390 × 844 exercise | PASS; populated editor and privacy have 0 serious/critical axe findings, marker arrows change X 50 → 51, no mobile overflow, correct SVG color dot, no inline styles, and 0 console/page errors |
+| Live offline | PASS in both viewports; Cache API contains hashed JS/CSS, HTTP cache was cleared, offline reload rendered the workspace and visible offline badge |
+| Live privacy | PASS; normal editor/legal/offline exercise contacted only `https://audio-range-cartographer.sociobot.in`; no analytics, font CDN, ads, or other third party |
+| Live `verify-url.sh` | PASS in 751 ms; correct title/lang, one h1, main, alt text, labelled buttons, 0 console/page errors |
+| Live Lighthouse 13.4.1 mobile | PASS; Performance 98, Accessibility 100, Best Practices 100, SEO 100; LCP 1,353 ms, CLS 0, TBT 148 ms |
 
 ## Known gaps / next steps
 
