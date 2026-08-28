@@ -1,6 +1,6 @@
-const VERSION = 'arc-v1';
+const VERSION = 'arc-v2';
 const SHELL = [
-  '/', '/index.html', '/offline.html', '/manifest.webmanifest', '/icon.svg',
+  '/', '/index.html', '/offline.html', '/privacy/', '/terms/', '/manifest.webmanifest', '/icon.svg',
   '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png',
   '/assets/range-landscape-768.webp', '/assets/range-landscape-1200.webp',
   '/assets/range-landscape-768.jpg'
@@ -25,9 +25,10 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request).then((response) => {
       const copy = response.clone();
-      caches.open(VERSION).then((cache) => cache.put('/index.html', copy));
+      const cacheKey = url.pathname === '/' ? '/index.html' : event.request;
+      caches.open(VERSION).then((cache) => cache.put(cacheKey, copy));
       return response;
-    }).catch(async () => (await caches.match('/index.html')) || caches.match('/offline.html')));
+    }).catch(async () => (await caches.match(event.request)) || (url.pathname === '/' ? caches.match('/index.html') : null) || caches.match('/offline.html')));
     return;
   }
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {

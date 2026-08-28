@@ -18,6 +18,13 @@ describe('scene import', () => {
     expect(project.width).toBeGreaterThanOrEqual(100);
   });
 
+  it('preserves large CSV coordinates while sizing the inferred map', () => {
+    const project = parseProjectText('name,x,y,maxDistance\nFar bell,250,180,20', 'world.csv');
+    expect(project.emitters[0]).toMatchObject({ x: 250, y: 180 });
+    expect(project.width).toBe(270);
+    expect(project.height).toBe(200);
+  });
+
   it('rejects malformed and unsafe imports without returning partial data', () => {
     expect(() => parseProjectText('{bad json', 'bad.json')).toThrow(/JSON is not valid/);
     expect(() => parseProjectText('label,x,y\nBell,1,2', 'bad.csv')).toThrow(/missing the “name”/);

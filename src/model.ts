@@ -29,7 +29,7 @@ export function uid(): string {
 export function makeEmitter(project: Project, x = project.width / 2, y = project.height / 2): Emitter {
   const index = project.emitters.length;
   const max = Math.max(4, Math.round(Math.min(project.width, project.height) * 0.18));
-  return { id: uid(), name: `Emitter ${index + 1}`, x: round(x), y: round(y), innerRadius: Math.max(1, Math.round(max * .2)), maxDistance: max, curve: 'linear', color: COLORS[index % COLORS.length], notes: '' };
+  return { id: uid(), name: `Emitter ${index + 1}`, x: round(clamp(x, 0, project.width)), y: round(clamp(y, 0, project.height)), innerRadius: Math.max(1, Math.round(max * .2)), maxDistance: max, curve: 'linear', color: COLORS[index % COLORS.length], notes: '' };
 }
 
 export function clampEmitter(emitter: Emitter, project: Project): Emitter {
@@ -87,7 +87,7 @@ function fromCsv(text: string, fileName: string): Project {
   const get = (row: string[], ...names: string[]) => { const i = headers.findIndex((header) => names.includes(header)); return i >= 0 ? row[i] : undefined; };
   for (const required of ['name', 'x', 'y']) if (!headers.includes(required)) throw new Error(`CSV is missing the “${required}” column. Required: name, x, y.`);
   if (rows.length > 201) throw new Error('A map can contain at most 200 emitters.');
-  const project = blankProject(); project.title = cleanTitle(fileName);
+  const project = blankProject(); project.title = cleanTitle(fileName); project.width = 100000; project.height = 100000;
   project.emitters = rows.slice(1).filter((row) => row.some(Boolean)).map((row, index) => parseEmitter({ name: get(row, 'name'), x: get(row, 'x'), y: get(row, 'y'), innerRadius: get(row, 'innerradius', 'inner', 'mindistance'), maxDistance: get(row, 'maxdistance', 'max', 'radius'), curve: get(row, 'curve'), color: get(row, 'color'), notes: get(row, 'notes', 'note') }, index, project));
   const maxX = Math.max(100, ...project.emitters.map((emitter) => emitter.x + emitter.maxDistance));
   const maxY = Math.max(70, ...project.emitters.map((emitter) => emitter.y + emitter.maxDistance));

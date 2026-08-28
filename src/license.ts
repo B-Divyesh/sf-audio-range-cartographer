@@ -16,7 +16,7 @@ export function initialLicense(): LicenseState {
   }
   const token = incoming?.trim() || localStorage.getItem(KEY);
   let unlocked = false;
-  try { const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null') as { valid?: boolean; checkedAt?: number } | null; unlocked = Boolean(token && cached?.valid && Date.now() - Number(cached.checkedAt) < 86_400_000); } catch { /* ignore malformed cache */ }
+  try { const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null') as { valid?: boolean; checkedAt?: number } | null; unlocked = Boolean(token && cached?.valid); } catch { /* ignore malformed cache */ }
   return { token, unlocked, checking: Boolean(token), notice: '' };
 }
 

@@ -6,15 +6,15 @@ test('builds and exports a useful map end to end', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('See the soundscape before you play it');
   await page.getByRole('button', { name: 'Explore sample' }).click();
   await expect(page.getByRole('heading', { name: 'Dock machinery' })).toBeVisible();
-  await expect(page.getByText(/finding/).first()).toBeVisible();
+  await expect(page.locator('#findings-title')).toContainText('finding');
 
   await page.getByLabel('Max range').fill('18');
   await page.getByLabel('Max range').blur();
-  await expect(page.getByText('18 m', { exact: false }).first()).toBeVisible();
+  await expect(page.getByLabel('Max range')).toHaveValue('18');
 
-  await page.getByText('Export', { exact: true }).click();
+  await page.locator('#export-menu summary').click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: /Preset JSON/ }).click();
+  await page.getByRole('button', { name: /preset JSON/i }).click();
   expect((await download).suggestedFilename()).toBe('harbor-approach.json');
 });
 
@@ -36,13 +36,25 @@ test('reports invalid imports without replacing the project', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Dock machinery' })).toBeVisible();
 });
 
+test('restores and verifies a one-time Pro license', async ({ page }) => {
+  await page.route('https://api.sociobot.in/api/v1/products/audio-range-cartographer/verify?license=license_test_123', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ valid: true, reason: 'ok', expires_at: null }),
+  }));
+  await page.goto('/?license=license_test_123');
+  await expect(page).not.toHaveURL(/license=/);
+  await expect(page.getByRole('button', { name: 'Pro unlocked' })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('sb_license:audio-range-cartographer'))).toBe('license_test_123');
+});
+
 test('has no serious accessibility violations on editor and legal page', async ({ page }, testInfo) => {
   await page.goto('/');
   if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Start blank' }).click();
-  const editor = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze();
+  const editor = await new AxeBuilder({ page }).analyze();
   expect(editor.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
   await page.goto('/privacy');
-  const privacy = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze();
+  const privacy = await new AxeBuilder({ page }).analyze();
   expect(privacy.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
 
