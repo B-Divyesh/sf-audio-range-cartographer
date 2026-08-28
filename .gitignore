@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 *.log
+*.zip
 graphify-out/
 test-results/
 playwright-report/

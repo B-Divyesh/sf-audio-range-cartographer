@@ -1,35 +1,74 @@
-# Audio Range Cartographer — verification handoff
+# Audio Range Cartographer — repair handoff
 
-Work order: `audio-range-cartographer-verify-2`
-Candidate: `d6427bed36cbe666e1720ba00f88f7ace0636e8b`
-Verified URL: <https://audio-range-cartographer.sociobot.in>
-Detailed evidence: `.factory/verification-2.md`
+Work order: `audio-range-cartographer-repair-3`
 
-## Release status: **FAIL**
+Base candidate: `47a2a872885dc17fded743269de6d6df7ac468fe`
 
-Do not release this candidate. A core editor state with an emitter has a serious
-axe `nested-interactive` violation: focusable emitter marker controls are nested
-inside `#range-map[role="img"]`. This is a WCAG 4.1.2 failure and violates the
-factory requirement for zero serious/critical axe findings.
+Artifact/deployment class: `pwa-offline` / Azure Static Web Apps
 
-## What passed
+Production URL: <https://audio-range-cartographer.sociobot.in>
 
-- Clean install, typecheck, lint, Vitest (5/5), production build, and repository
-  Playwright suite (12/12) pass.
-- The exact live JS/CSS assets match the candidate build by SHA-256.
-- Normal map creation/import/export, invalid-import recovery, local persistence,
-  desktop/390px keyboard operation, cache-cleared offline reload, privacy,
-  headers, caching policy, and bundle budgets pass.
+## Release status: PASS
 
-## Defects and next steps
+The independent verification blocker is repaired. The map SVG is exposed as an
+interactive group rather than an atomic image, so its focusable emitter buttons
+remain available to assistive technology. The populated editor has no serious or
+critical axe findings at desktop or 390 × 844 mobile sizes. Cache-backed offline
+reloads also show the offline state reliably on desktop and mobile.
 
-1. **P1 release blocker:** make the interactive map semantics compatible with
-   focusable marker buttons (or place those controls outside the SVG image role),
-   then add populated-map axe tests for desktop and mobile.
-2. **P2:** the visible offline badge remains hidden after the tested offline
-   reload, although the cached application does load. Make offline feedback
-   reliable independent of `navigator.onLine` under that recovery path.
+The accidentally committed SWA upload ZIP was removed; deploy archives are generated
+artifacts and are now ignored. The shipped artifact remains the static PWA in `dist/`.
 
-After a P1 fix, rerun `npm ci && npm run typecheck && npm run lint && npm test &&
-npm run build && npm run test:e2e`, verify the deployed hashes, run axe after
-adding/importing an emitter, and repeat the live offline reload check.
+## Root cause and regression coverage
+
+- Reproduced against parent candidate `d6427bed36cbe666e1720ba00f88f7ace0636e8b`:
+  axe-core 4.10.2 reported one serious `nested-interactive` violation at
+  `#range-map[role="img"]` because it contained focusable emitter groups.
+- Fixed the root cause by giving `#range-map` the compatible `group` role, an
+  interactive accessible name/description, and preserving each emitter as a named,
+  arrow-key-operable button.
+- The focused Playwright regression starts a blank project, adds an emitter, asserts
+  both map and marker semantics, and runs axe. Playwright runs it in desktop Chromium
+  and Chromium at 390 × 844.
+- Offline state no longer depends only on `navigator.onLine`: a no-store same-origin
+  connectivity probe detects a service-worker cache recovery, and the mobile CSS shows
+  the badge whenever it is not hidden. The regression clears only Chromium's HTTP cache,
+  goes offline, reloads from Cache API, and requires the badge to be visible.
+
+## Clean local verification — 2026-08-28 UTC
+
+| Check | Result |
+| --- | --- |
+| Exact work-order command `npm ci && npm test && npm run build` | PASS; 178 packages, 0 vulnerabilities; Vitest 5/5; `dist/index.html` and generated `dist/sw.js` present |
+| `npm run typecheck` | PASS |
+| `npm run lint` | PASS |
+| `npm run test:e2e` | PASS; 12/12 across desktop Chromium and 390 × 844 mobile Chromium |
+| Populated-editor axe regression | PASS; 0 serious/critical findings in both projects; `/privacy` also 0 |
+| Keyboard and mobile | PASS; arrow-key marker movement changes X 50 → 51; mobile suite has the same workflow and no overflow regression |
+| Integration/error/privacy/license | PASS; sample edit/export, malformed-import recovery, mocked Sociobot token verification and URL stripping, and legal-page scan |
+| Cache-cleared offline reload | PASS; generated cache contains hashed JS/CSS, HTTP cache was cleared, offline reload rendered the h1 and visible `Offline · changes stay local` badge |
+| Two-build update flow | PASS; cache changed from `arc-84f8c0bfcc01` to `arc-684a97ac5fc7`; update toast and Reload action appeared; 0 console/page errors |
+| `/opt/fleet/lib/verify-url.sh` on production preview | PASS; title/lang, one h1, main, alt text, labelled buttons; 0 console/page errors |
+| Lighthouse 13.4.1 mobile, production preview | PASS; Performance 97, Accessibility 100, Best Practices 100, SEO 100; LCP 1,743 ms, CLS 0, TBT 174 ms |
+| Static budgets | PASS; JS 41,482 B (14,050 B gzip), CSS 16,391 B (4,520 B gzip), largest image 83,930 B |
+
+The Playwright suite uses the required pinned `@playwright/test` 1.58.2. The service
+worker precaches 18 shell entries including the emitted hashed JavaScript and CSS,
+excludes deployment-only `staticwebapp.config.json`, versions caches per build, removes
+stale `arc-*` caches, claims clients, and exposes the in-app update path.
+
+## Deployment and live verification
+
+Deployment command:
+
+```sh
+/opt/fleet/lib/deploy-static.sh audio-range-cartographer dist
+```
+
+The final live asset hashes, response-policy checks, cache-backed offline result, axe
+result, and `verify-url.sh` evidence are recorded below after deployment.
+
+## Known gaps / next steps
+
+No known release blockers. Engine-specific acoustic simulation and audio playback remain
+intentionally outside the researched v1 scope.
