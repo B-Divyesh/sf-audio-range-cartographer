@@ -1,0 +1,8 @@
+{
+  "slug": "audio-range-cartographer",
+  "title": "Audio Range Cartographer",
+  "artifact_class": "pwa-offline",
+  "smallest_useful_product": "An offline web tool that imports a tiny CSV/JSON scene map, lets a designer place emitters and attenuation curves, then exports a labelled PNG/SVG audibility map and a shareable preset.",
+  "monetization": "one-time",
+  "constraints": "All maps and coordinates stay in-browser; curve semantics are labelled; import untrusted files safely."
+}
