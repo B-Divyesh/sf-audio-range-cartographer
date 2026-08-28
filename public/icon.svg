@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Audio Range Cartographer sonar mark">
+  <rect width="512" height="512" rx="112" fill="#071012"/>
+  <circle cx="256" cy="256" r="174" fill="none" stroke="#21494a" stroke-width="14"/>
+  <circle cx="256" cy="256" r="116" fill="none" stroke="#3cae98" stroke-width="18"/>
+  <circle cx="256" cy="256" r="55" fill="#65f4d0" fill-opacity=".18" stroke="#65f4d0" stroke-width="20"/>
+  <circle cx="256" cy="256" r="16" fill="#f1f7f4"/>
+  <path d="M256 46v48M256 418v48M46 256h48M418 256h48" stroke="#ffc76a" stroke-width="14" stroke-linecap="round"/>
+</svg>

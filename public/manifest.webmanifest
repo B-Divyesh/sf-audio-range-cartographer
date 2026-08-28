@@ -1,0 +1,17 @@
+{
+  "name": "Audio Range Cartographer",
+  "short_name": "Range Map",
+  "description": "Map and review spatial-audio attenuation ranges offline.",
+  "id": "/",
+  "start_url": "/?source=installed&v=1",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#071012",
+  "theme_color": "#071012",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

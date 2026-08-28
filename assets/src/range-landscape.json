@@ -1,0 +1,8 @@
+{
+  "generator": "Azure AI Foundry factory-image via /opt/fleet/lib/gen-image.sh",
+  "generated_at": "2026-08-28",
+  "size": "1536x1024",
+  "quality": "high",
+  "prompt": "Use case: stylized-concept. Asset type: responsive empty-state landscape for an offline spatial-audio mapping utility. A wide top-down isometric abstract game-level terrain made of smoky translucent glass slabs, with three luminous concentric sonar fields spreading across a precise coordinate grid. No interface screenshot. Dark midnight world, cyan and seafoam light, one restrained amber overlap, volumetric but crisp studio lighting, etched glass and fine technical line texture, generous dark negative space, sophisticated editorial 3D illustration. No people, no characters, no real brands, no text, no letters, no watermark, no logos, no generic gradient.",
+  "review": "Approved: clean geometry, coherent palette, no text artifacts, brands, people, or unintended symbols."
+}
