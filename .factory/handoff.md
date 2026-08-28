@@ -6,9 +6,9 @@ Verifier report: `.factory/verification.md`
 
 ## Release status
 
-**Local verification: PASS.** The P1 first-offline-reload defect is repaired and has exact
-desktop and 390px mobile regression coverage. Live deployment evidence is recorded below
-after the factory static deployment finishes.
+**PASS — deployed.** The P1 first-offline-reload defect is repaired with exact desktop and
+390px mobile regression coverage. The production URL serves the deployed `dist/` asset hashes,
+passes the cache-cleared offline reload, and has no browser console or page errors.
 
 ## What changed
 
@@ -19,6 +19,9 @@ after the factory static deployment finishes.
   Cartographer caches.
 - Made cache matching resilient to response `Vary` headers with `ignoreVary: true`. This is
   important for a reliable Cache API hit after a browser HTTP-cache eviction.
+- Excluded `staticwebapp.config.json` from the worker list: Azure Static Web Apps consumes
+  that deployment configuration instead of serving it, so precaching it would atomically fail
+  `cache.addAll()`. Regression coverage asserts it is never a cached public URL.
 - Added the verifier's precise P1 browser test: it waits for worker control, asserts the
   generated hashed JS/CSS are in Cache API, clears only Chromium's HTTP cache via CDP,
   reasserts Cache API retention, turns the network off, and reloads successfully.
@@ -91,4 +94,24 @@ accessibility behavior is retained.
 
 ## Live deployment evidence
 
-Pending the static deployment for this repair.
+Deployed with `/opt/fleet/lib/deploy-static.sh audio-range-cartographer dist` (Azure Static
+Web Apps deployment `6fc7f157-32ba-4dca-94f2-28643d790f4f`) to
+<https://audio-range-cartographer.sociobot.in>.
+
+- `verify-url.sh` against the live URL: HTTP 200, **912 ms** network-idle load, no console or
+  page errors, title/lang/one h1/main/alt text/labelled-button checks all pass; it captured
+  desktop and 390px mobile browser screenshots.
+- Live identity check: HTML references `/assets/index-DzoXNNut.js` and
+  `/assets/index-DlrSGIao.css`; SHA-256 of both responses exactly matches the deployed `dist/`
+  files.
+- Live 390px Chromium PWA check: Cache API contained both hashed app JS and CSS; after CDP
+  HTTP-cache clearing those entries remained; an offline reload rendered “See the soundscape
+  before you play it”, had no console/page errors, and had no horizontal overflow. The
+  deployment-only static-web-app configuration was correctly absent from Cache API.
+- Live response policy: app HTML/worker/manifest are short revalidating, hashed JS is
+  `public, max-age=31536000, immutable`, manifest is `application/manifest+json`, and HSTS,
+  nosniff, strict referrer policy, CSP, Permissions-Policy, and `X-Frame-Options: DENY` are
+  present.
+- Azure's production edge did not emit the configured COOP/CORP headers, although the same
+  `staticwebapp.config.json` does in the local SWA runtime. This is the verifier's nonblocking
+  P3 platform-header gap; it does not affect the P1 offline acceptance or product behavior.
