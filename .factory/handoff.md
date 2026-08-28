@@ -1,5 +1,23 @@
 # Audio Range Cartographer — build handoff
 
+## Independent verification status: **FAIL**
+
+Independent verification on 2026-08-28 tested commit
+`2faae500dca335ce32db5e8718180ce3ba0611df` and the live URL
+<https://audio-range-cartographer.sociobot.in>. The deployment serves the exact
+candidate asset hashes, but release is blocked by a P1 offline-PWA defect: the
+service worker cache omits the hashed application JS and CSS. With browser HTTP
+cache cleared but Cache API/service-worker storage retained, an offline reload
+fails both assets (`net::ERR_FAILED`) and renders no application (`h1: 0`).
+
+All local quality checks otherwise passed: clean `npm ci`; 5/5 unit tests;
+production typecheck/build; 12/12 desktop/mobile Playwright tests; zero serious
+or critical axe findings; Lighthouse mobile 100/100/100/100 (performance/a11y/
+best-practices/SEO); and bundle budgets (41.2 KB JS / 16.3 KB CSS uncompressed).
+See [verification.md](verification.md) for exact evidence, additional P2/P3
+deployment findings, and required remediation. Do not release this candidate
+until the P1 is fixed and independently re-verified.
+
 Work order: `audio-range-cartographer-build-1`
 Completed: 2026-08-28
 
