@@ -56,6 +56,8 @@ Requires a current Node.js LTS release.
 ```sh
 npm ci
 npm run dev
+npm run typecheck
+npm run lint
 npm test
 npm run build
 npm run test:e2e
@@ -65,6 +67,12 @@ npm run test:e2e
 `dist/`, with `dist/index.html` at its root. The Playwright suite uses the pinned 1.58.2
 browser API and verifies Chromium desktop, a 390px mobile viewport, offline reload,
 downloads, keyboard operation, and axe accessibility checks.
+
+The production build generates `dist/sw.js` from Vite's asset manifest. It precaches every
+hashed application script and stylesheet before the first offline reload, uses a unique cache
+version per build, and removes only prior Cartographer caches on activation. The static-host
+response policy lives in `public/staticwebapp.config.json`: hashed assets are immutable for a
+year, while HTML, the manifest, and the worker are short-lived and revalidated.
 
 ## Privacy and licensing
 

@@ -1,99 +1,94 @@
-# Audio Range Cartographer — build handoff
+# Audio Range Cartographer — repair handoff
 
-## Independent verification status: **FAIL**
+Work order: `audio-range-cartographer-repair-1`  
+Repaired from verifier candidate: `2faae500dca335ce32db5e8718180ce3ba0611df`  
+Verifier report: `.factory/verification.md`
 
-Independent verification on 2026-08-28 tested commit
-`2faae500dca335ce32db5e8718180ce3ba0611df` and the live URL
-<https://audio-range-cartographer.sociobot.in>. The deployment serves the exact
-candidate asset hashes, but release is blocked by a P1 offline-PWA defect: the
-service worker cache omits the hashed application JS and CSS. With browser HTTP
-cache cleared but Cache API/service-worker storage retained, an offline reload
-fails both assets (`net::ERR_FAILED`) and renders no application (`h1: 0`).
+## Release status
 
-All local quality checks otherwise passed: clean `npm ci`; 5/5 unit tests;
-production typecheck/build; 12/12 desktop/mobile Playwright tests; zero serious
-or critical axe findings; Lighthouse mobile 100/100/100/100 (performance/a11y/
-best-practices/SEO); and bundle budgets (41.2 KB JS / 16.3 KB CSS uncompressed).
-See [verification.md](verification.md) for exact evidence, additional P2/P3
-deployment findings, and required remediation. Do not release this candidate
-until the P1 is fixed and independently re-verified.
+**Local verification: PASS.** The P1 first-offline-reload defect is repaired and has exact
+desktop and 390px mobile regression coverage. Live deployment evidence is recorded below
+after the factory static deployment finishes.
 
-Work order: `audio-range-cartographer-build-1`
-Completed: 2026-08-28
+## What changed
 
-## What shipped
+- Replaced the manually maintained `public/sw.js` list with a generated `dist/sw.js`.
+  The Vite build manifest is traversed for every hashed JS, CSS, imported chunk, and emitted
+  asset; public files are discovered at build time too. The worker precaches that complete
+  list before activation, has a unique `arc-…` cache per build, and deletes only stale
+  Cartographer caches.
+- Made cache matching resilient to response `Vary` headers with `ignoreVary: true`. This is
+  important for a reliable Cache API hit after a browser HTTP-cache eviction.
+- Added the verifier's precise P1 browser test: it waits for worker control, asserts the
+  generated hashed JS/CSS are in Cache API, clears only Chromium's HTTP cache via CDP,
+  reasserts Cache API retention, turns the network off, and reloads successfully.
+- Added an actionable update toast (`Reload`) when a new worker installs. Existing delete
+  undo remains wired through the now explicit toast action callback.
+- Added `public/staticwebapp.config.json` for the static deployment: immutable one-year
+  cache headers for `/assets/*`; short revalidating headers for HTML, manifest, and worker;
+  CSP, frame protection, permissions policy, COOP/CORP, nosniff, and manifest MIME type.
+  Legal and offline page styles now live in same-origin CSS files so strict CSP does not
+  block their appearance.
+- Added explicit `npm run typecheck` and `npm run lint` quality gates. Linting also found a
+  control-character regex rule issue; sanitization now uses the equivalent Unicode control
+  category (`\p{Cc}`).
 
-- A responsive, keyboard-operable SVG spatial-audio map with direct placement, dragging,
-  arrow-key nudging, inner/full-volume ranges, maximum audible ranges, six emitter colors,
-  notes, and explicit linear/inverse/exponential map semantics.
-- Strict local JSON and CSV import (1 MB / 200-emitter bounds) with actionable errors that
-  do not replace the open project. Large CSV coordinates inform the inferred map size.
-- Preflight findings for strongly overlapping, clipped, unusually narrow, and map-wide
-  emitters. Findings link back to the relevant inspector.
-- Labelled PNG and SVG map exports, plus portable JSON preset and CSV data exports.
-- IndexedDB autosave, refresh/tab-close persistence, delete/undo, sample and blank empty
-  states, offline status, and a hand-written versioned service worker with app-shell and
-  route fallbacks.
-- Installable PWA manifest with 192px, 512px, and maskable icons.
-- $12 one-time Cartographer Pro integration through the Sociobot billing contract:
-  hosted checkout link, query-string token capture and removal, daily verification cache,
-  offline use of the last valid verdict, paste-to-restore, quiet revocation handling, 4×
-  PNG export, and timestamped local checkpoints. No product ID is hardcoded.
-- `/privacy/` and `/terms/` static pages, plus SPA fallbacks for rewrite-capable hosts.
-- A product-specific luminous-glass visual system and original generated landscape with
-  source, prompt sidecar, provenance, and optimized 36 KB / 84 KB WebP outputs.
-- Full README, MIT license, source-of-truth brief, and design specification.
-
-## How to run
+## How to run and deploy
 
 ```sh
 npm ci
-npm run dev
+npm run typecheck
+npm run lint
 npm test
 npm run build
 npm run test:e2e
+/opt/fleet/lib/deploy-static.sh audio-range-cartographer dist
 ```
 
-The exact deployment build command is `npm run build`. Output is `dist/`, with
-`dist/index.html` at the root.
+`npm run build` writes the required static PWA to `dist/`, with `dist/index.html` at its
+root. The generated worker is intentionally a build artifact, not a checked-in source file.
 
-## Verification performed
+## Verification evidence
 
-- `npm test`: **5/5 unit tests passed** (JSON/CSV parsing, bounds, coordinate inference,
-  diagnostics).
-- `npm run test:e2e`: **12/12 passed** using Playwright 1.58.2 on desktop Chromium and a
-  390 × 844 mobile viewport. Covered editing/export, keyboard movement, invalid import,
-  mocked Sociobot license verification, axe scans, and explicit offline reload with
-  `context.setOffline(true)`.
-- `npm run build`: passed. Initial application bundle: **41.16 KB JS** (13.90 KB gzip) and
-  **16.33 KB CSS** (4.50 KB gzip). Both are far below the 200 KB / 50 KB budgets.
-- `npm audit`: **0 vulnerabilities**.
-- Factory `verify-url.sh` against the production preview: HTTP 200, no console/page errors,
-  title present, `lang="en"`, one `<h1>`, main landmark present, zero missing alt attributes,
-  and zero unlabeled buttons. Local network-idle load: **665 ms**.
-- Lighthouse 13.0.1, mobile throttling, production preview:
-  - Performance: **100**
-  - Accessibility: **100**
-  - Best practices: **100**
-  - SEO: **100**
-  - LCP: **1.7 s**; CLS: **0**; total blocking time: **0 ms**; speed index: **0.9 s**
-- Visual inspection completed at 1366px and 390px. Focus treatment, 44px targets,
-  responsive stacking, safe-area toast placement, and reduced-motion rules are present.
+- Clean `npm ci`: **179 packages audited, 0 vulnerabilities**.
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm test`: **5/5** passed.
+- `npm run build`: passed; current initial app bundle is **41,297 B JS** (13,855 B gzip) and
+  **16,327 B CSS** (4,512 B gzip), inside the 200 KB / 50 KB static-PWA budgets.
+- Two successive production builds generated different `arc-…` worker cache versions; the
+  generated `PRECACHE` contains the actual hashed `index-*.js` and `index-*.css` files.
+- `npm run test:e2e`: **12/12** passed (Chromium desktop and iPhone-13 emulation at
+  390 × 844). It covers the full editor/export workflow, keyboard movement, invalid and
+  untrusted imports, licensing, axe serious/critical scans, responsive mobile, and the
+  HTTP-cache-cleared offline reload described above.
+- Factory `verify-url.sh` against an Azure Static Web Apps local preview: HTTP 200; no page
+  or console errors; title, `lang=en`, one h1, main landmark, image alt text, and labelled
+  buttons all present. Local network-idle load: **686 ms**.
+- Azure Static Web Apps local preview response checks: hashed JS has
+  `Cache-Control: public, max-age=31536000, immutable`; manifest is
+  `application/manifest+json`; worker is short revalidating; CSP, `X-Frame-Options: DENY`,
+  `Permissions-Policy`, COOP, and CORP are present.
+- Lighthouse 13.4.1 mobile against that static preview: **99 performance, 100 accessibility,
+  100 best practices, 100 SEO**; LCP **2.0 s**, CLS **0**, TBT **0 ms**.
 
-## Privacy and security notes
+## Privacy and product behavior
 
-Project files and snapshots never leave IndexedDB. Imports are parsed as data, bounded,
-escaped before DOM/SVG use, and never executed. There are no analytics, tracking pixels,
-third-party fonts, or CDN runtime dependencies. Only a license token is sent to the
-Sociobot verification endpoint when the user invokes Pro licensing.
+No project data leaves IndexedDB. There are no analytics, ads, third-party fonts, or CDN
+runtime scripts. CSP permits network connections only to the Sociobot production and pilot
+license APIs; those calls are still made solely for the explicit Pro licensing flow. All
+previously passing editor, export, local storage, import-boundary, mobile, keyboard, and
+accessibility behavior is retained.
 
-## Known gaps / release steps
+## Known product limits
 
-- The factory must register the live `audio-range-cartographer` paid product and return URL
-  before the checkout can complete in production. The client intentionally uses the slug,
-  not an unregistered product ID.
-- Curve previews are labelled planning abstractions. Engine-specific distance models,
-  occlusion, elevation, listener orientation, and audio playback remain intentionally out
-  of scope; designers must audition the result in-engine.
-- This v1 keeps one active project plus Pro checkpoints. JSON export/import is the portable
-  multi-project workflow.
+- The factory must register the live paid product and return URL before checkout can complete
+  in production; the client correctly uses the product slug rather than an unregistered ID.
+- Curves remain explicitly labelled planning abstractions, not engine-specific audio playback
+  simulations. Occlusion, elevation, orientation, and runtime audition remain outside v1.
+- One active project and Pro checkpoints are stored locally; JSON export/import remains the
+  portable multi-project workflow.
+
+## Live deployment evidence
+
+Pending the static deployment for this repair.

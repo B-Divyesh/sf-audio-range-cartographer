@@ -14,6 +14,7 @@ export class App {
   private saveTimer = 0;
   private deleted: Emitter | null = null;
   private dragged = false;
+  private toastAction: (() => void) | null = null;
 
   constructor(private readonly root: HTMLDivElement) {}
 
@@ -178,7 +179,7 @@ export class App {
     this.root.querySelector<HTMLButtonElement>('#help-button')?.addEventListener('click', () => this.openDialog('help-dialog'));
     this.root.querySelector<HTMLButtonElement>('#pro-button')?.addEventListener('click', () => this.openDialog('pro-dialog'));
     this.root.querySelector<HTMLButtonElement>('#verify-button')?.addEventListener('click', () => this.restoreLicense());
-    this.root.querySelector<HTMLButtonElement>('#toast-action')?.addEventListener('click', () => this.undoDelete());
+    this.root.querySelector<HTMLButtonElement>('#toast-action')?.addEventListener('click', () => this.toastAction?.());
   }
 
   private bindMap(): void {
@@ -212,7 +213,7 @@ export class App {
   }
 
   private deleteEmitter(emitter: Emitter): void {
-    this.deleted = structuredClone(emitter); this.project.emitters = this.project.emitters.filter((item) => item.id !== emitter.id); this.selectedId = null; this.changed(); this.render(); this.announce(`${emitter.name} deleted.`, 'info', 'Undo');
+    this.deleted = structuredClone(emitter); this.project.emitters = this.project.emitters.filter((item) => item.id !== emitter.id); this.selectedId = null; this.changed(); this.render(); this.announce(`${emitter.name} deleted.`, 'info', 'Undo', () => this.undoDelete());
   }
 
   private undoDelete(): void { if (!this.deleted) return; this.project.emitters.push(this.deleted); this.selectedId = this.deleted.id; this.announce(`${this.deleted.name} restored.`, 'success'); this.deleted = null; this.changed(); this.render(); }
@@ -279,15 +280,15 @@ export class App {
 
   private openDialog(id: string): void { const dialog = this.root.querySelector<HTMLDialogElement>(`#${id}`); if (dialog && !dialog.open) dialog.showModal(); }
 
-  private announce(message: string, tone: 'success' | 'error' | 'info' = 'info', action = ''): void {
+  private announce(message: string, tone: 'success' | 'error' | 'info' = 'info', action = '', onAction: (() => void) | null = null): void {
     const toast = this.root.querySelector<HTMLDivElement>('#toast'); const text = this.root.querySelector('#toast-text'); const button = this.root.querySelector<HTMLButtonElement>('#toast-action'); if (!toast || !text || !button) return;
-    text.textContent = message; toast.dataset.tone = tone; toast.hidden = false; button.hidden = !action; button.textContent = action; window.setTimeout(() => { if (toast && button.hidden) toast.hidden = true; }, 5000);
+    text.textContent = message; toast.dataset.tone = tone; toast.hidden = false; this.toastAction = onAction; button.hidden = !action; button.textContent = action; button.setAttribute('aria-label', action || 'Notification action'); window.setTimeout(() => { if (toast && button.hidden) toast.hidden = true; }, 5000);
   }
 
   private setupOffline(): void {
     const update = () => { const badge = this.root.querySelector<HTMLElement>('#network-state'); if (badge) badge.hidden = navigator.onLine; };
     update(); window.addEventListener('online', update); window.addEventListener('offline', update);
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then((registration) => { registration.addEventListener('updatefound', () => { const worker = registration.installing; worker?.addEventListener('statechange', () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) this.announce('An app update is ready. Reload to use it.', 'info'); }); }); }).catch(() => { if (!location.hostname.includes('localhost')) this.announce('Offline installation is temporarily unavailable.', 'info'); });
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then((registration) => { registration.addEventListener('updatefound', () => { const worker = registration.installing; worker?.addEventListener('statechange', () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) this.announce('An app update is ready. Reload to use it.', 'info', 'Reload', () => location.reload()); }); }); }).catch(() => { if (!location.hostname.includes('localhost')) this.announce('Offline installation is temporarily unavailable.', 'info'); });
   }
 }
 

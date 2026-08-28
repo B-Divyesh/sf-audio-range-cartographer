@@ -58,11 +58,32 @@ test('has no serious accessibility violations on editor and legal page', async (
   expect(privacy.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
 
-test('reloads the cached workspace while offline', async ({ page, context }) => {
+test('precache survives an HTTP-cache eviction before an offline reload', async ({ page, context }) => {
   await page.goto('/');
-  await page.waitForFunction(() => 'serviceWorker' in navigator);
-  await page.waitForTimeout(800);
-  await page.reload();
+  await page.waitForFunction(async () => {
+    if (!('serviceWorker' in navigator)) return false;
+    await navigator.serviceWorker.ready;
+    return Boolean(navigator.serviceWorker.controller);
+  });
+
+  const cachedPaths = await page.evaluate(async () => {
+    const cacheNames = (await caches.keys()).filter((name) => name.startsWith('arc-'));
+    const entries = await Promise.all(cacheNames.map(async (name) => (await caches.open(name)).keys()));
+    return entries.flat().map((request) => new URL(request.url).pathname);
+  });
+  expect(cachedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.js$/));
+  expect(cachedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.css$/));
+
+  // This is the verifier's P1 reproduction: preserve Cache API/SW storage,
+  // clear only the ordinary HTTP cache, then reload with the network disabled.
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Network.clearBrowserCache');
+  const retainedPaths = await page.evaluate(async () => {
+    const cacheNames = (await caches.keys()).filter((name) => name.startsWith('arc-'));
+    return (await Promise.all(cacheNames.map(async (name) => (await caches.open(name)).keys()))).flat().map((request) => new URL(request.url).pathname);
+  });
+  expect(retainedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.js$/));
+  expect(retainedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.css$/));
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

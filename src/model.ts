@@ -128,7 +128,7 @@ function finite(value: unknown, label: string, min: number, max: number): number
 
 function safeString(value: unknown, fallback: string, max: number): string {
   if (typeof value !== 'string' && typeof value !== 'number') return fallback;
-  const cleaned = String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+  const cleaned = String(value).replace(/\p{Cc}/gu, '').trim();
   return cleaned ? cleaned.slice(0, max) : fallback;
 }
 
