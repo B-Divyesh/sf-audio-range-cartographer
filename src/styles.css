@@ -133,7 +133,7 @@ textarea { resize: vertical; min-height: 74px; }
 .findings small { color: var(--muted); line-height: 1.35; }
 .all-clear { margin: 0; padding: 0 16px 20px; color: var(--muted); font-size: 14px; }
 footer { width: min(1500px, 100%); margin: 0 auto; padding: 20px; display: flex; justify-content: space-between; gap: 16px; border-top: 1px solid #183034; color: var(--muted); font-size: 13px; }
-footer p { margin: 0; } footer nav { flex-wrap: wrap; justify-content: flex-end; } footer a { color: var(--muted); }
+footer p { margin: 0; } footer nav { flex-wrap: wrap; justify-content: flex-end; } footer a { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 8px; border-radius: 8px; color: var(--muted); } footer nav > span { display: inline-flex; align-items: center; min-height: 44px; }
 .toast { position: fixed; z-index: 50; left: 50%; bottom: max(22px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(520px, calc(100% - 32px)); padding: 13px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--border-bright); border-radius: 12px; background: #14282bf5; box-shadow: 0 20px 50px #0009; }
 .toast[hidden] { display: none; }.toast[data-tone="error"] { border-color: #9a554c; }.toast[data-tone="success"] { border-color: #44795d; }
 .toast button { min-width: 54px; min-height: 36px; border: 0; background: transparent; color: var(--accent); font-weight: 800; cursor: pointer; }
@@ -150,7 +150,7 @@ dialog p, dialog li { color: var(--muted); } dialog li + li { margin-top: 8px; }
 .snapshot-list button { width: 100%; display: grid; gap: 3px; min-height: 58px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }.snapshot-list button:hover { background: var(--surface-2); }.snapshot-list span { color: var(--muted); font-size: 12px; }
 .loading-state { color: var(--muted); }
 .legal-page { max-width: 760px; min-height: calc(100vh - 180px); padding-top: 72px; }
-.legal-page h1 { margin: 8px 0 12px; font-size: clamp(2.6rem, 8vw, 5rem); line-height: .95; letter-spacing: -.055em; }.legal-page .lede { color: var(--muted); }.legal-page h2 { margin-top: 40px; font-size: 22px; }.legal-page p { max-width: 68ch; font-size: 17px; line-height: 1.7; color: #c4d2cf; }.legal-page .button { width: max-content; margin-top: 24px; }
+.legal-page h1 { margin: 8px 0 12px; font-size: clamp(2.6rem, 8vw, 5rem); line-height: .95; letter-spacing: -.055em; overflow-wrap: anywhere; }.legal-page .lede { color: var(--muted); }.legal-page h2 { margin-top: 40px; font-size: 22px; }.legal-page p { max-width: 68ch; font-size: 17px; line-height: 1.7; color: #c4d2cf; }.legal-page .button { width: max-content; margin-top: 24px; }
 
 @media (max-width: 1080px) {
   .project-bar { grid-template-columns: 1fr auto; }.project-name { grid-column: 1 / -1; }.workbench { grid-template-columns: minmax(0, 1fr) 310px; }.map-wrap { min-height: 380px; }
@@ -164,7 +164,7 @@ dialog p, dialog li { color: var(--muted); } dialog li + li { margin-top: 8px; }
   .project-bar { padding: 10px; gap: 10px; }.dimension-fields { gap: 6px; }.dimension-fields label:last-child { max-width: 68px; }.bar-actions { display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 6px; }.bar-actions .button { padding-inline: 8px; }
   .map-panel, .inspector { border-radius: 15px; }.panel-heading { min-height: 64px; }.map-wrap { min-height: 300px; aspect-ratio: .92; }.map-foot { align-items: flex-start; gap: 4px; flex-direction: column; }.map-foot p:first-child { display: none; }
   .onboarding::after { background: linear-gradient(0deg, #071012fa 0, #071012d5 62%, #07101245); }.onboarding-copy { align-self: end; padding: 22px; }.onboarding-copy h2 { font-size: 2rem; }.onboarding-copy > p:not(.eyebrow) { font-size: 15px; }.onboarding-copy .button { flex: 1 1 120px; }
-  .emitter text { display: none; }.inspector { display: block; }.findings { border-left: 0; border-top: 1px solid var(--border); } footer { flex-direction: column; } footer nav { justify-content: flex-start; }.toast { bottom: max(14px, env(safe-area-inset-bottom)); }
+  .emitter text { display: none; }.inspector { display: block; }.findings { border-left: 0; border-top: 1px solid var(--border); } footer { flex-direction: column; } footer nav { justify-content: flex-start; }.legal-page h1 { font-size: clamp(1.75rem, 8.75vw, 2.4rem); }.toast { bottom: max(14px, env(safe-area-inset-bottom)); }
   dialog form { padding: 22px; }
 }
 @media (prefers-reduced-motion: reduce) {

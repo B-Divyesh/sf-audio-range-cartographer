@@ -64,6 +64,49 @@ test('has no serious accessibility violations with interactive markers and on th
   expect(privacy.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
 
+test('keeps footer controls touch-safe and Terms within the 390px viewport @regression:mobile-footer-terms', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.locator('footer').scrollIntoViewIfNeeded();
+  const footerTargets = await page.locator('footer a').evaluateAll((links) => links.map((link) => {
+    const box = link.getBoundingClientRect();
+    return { label: link.textContent?.trim(), width: box.width, height: box.height };
+  }));
+  expect(footerTargets).toEqual(expect.arrayContaining([
+    expect.objectContaining({ label: 'Privacy', width: expect.any(Number), height: expect.any(Number) }),
+    expect.objectContaining({ label: 'Terms', width: expect.any(Number), height: expect.any(Number) }),
+    expect.objectContaining({ label: 'Param Factory', width: expect.any(Number), height: expect.any(Number) }),
+  ]));
+  for (const target of footerTargets) {
+    expect(target.width).toBeGreaterThanOrEqual(44);
+    expect(target.height).toBeGreaterThanOrEqual(44);
+  }
+
+  // The deployed host serves the static legal document at this directory URL.
+  await page.goto('/terms/');
+  const legalLayout = await page.evaluate(() => {
+    const heading = document.querySelector('h1');
+    const headingBox = heading?.getBoundingClientRect();
+    return {
+      viewportWidth: window.visualViewport?.width ?? window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      headingWidth: headingBox?.width ?? 0,
+      headingScrollWidth: heading?.scrollWidth ?? 0,
+    };
+  });
+  expect(legalLayout.documentWidth).toBeLessThanOrEqual(legalLayout.viewportWidth);
+  expect(legalLayout.headingScrollWidth).toBeLessThanOrEqual(legalLayout.headingWidth);
+
+  const legalTargets = await page.locator('header a, footer a').evaluateAll((links) => links.map((link) => {
+    const box = link.getBoundingClientRect();
+    return { label: link.textContent?.trim(), width: box.width, height: box.height };
+  }));
+  for (const target of legalTargets) {
+    expect(target.width).toBeGreaterThanOrEqual(44);
+    expect(target.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
 test('precache survives an HTTP-cache eviction before an offline reload', async ({ page, context }) => {
   await page.goto('/');
   await page.waitForFunction(async () => {
