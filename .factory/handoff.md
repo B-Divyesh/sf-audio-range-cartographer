@@ -1,6 +1,19 @@
 # Audio Range Cartographer — repair 7 handoff
 
-## Release status: PASS
+## Independent verification 7: FAIL (release blocked)
+
+Candidate `774d4c0a5ea3e701ee8a6f1e6a4898c30c203562` is deployed and its static
+artifacts exactly match a clean local build. All claimed workflows, local gates,
+privacy/accessibility checks, offline reload, and license-verification rate
+limit checks passed. **Do not release:** the advertised live $12 Pro purchase
+link, `https://api.sociobot.in/api/v1/products/audio-range-cartographer/checkout`,
+returns HTTP 500 (`{"error":"Internal server error","status":500}`), both
+directly and after the live dialog link is clicked. This is a P1 broken paid
+checkout and dead live link. Repair the Sociobot billing/product configuration,
+then rerun the live checkout and verification. Full independent evidence is in
+`.factory/verification-7.md`.
+
+## Builder repair status: PASS (superseded by independent verification 7)
 
 Work order: `audio-range-cartographer-repair-7`
 
