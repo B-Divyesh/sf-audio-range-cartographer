@@ -1,0 +1,65 @@
+[
+  {
+    "id": "core-workflow",
+    "claim": "Designers can tune a sample emitter, review range findings, and export a portable map preset.",
+    "where": "README",
+    "test": "npm run test:e2e -- --grep @claim:core-workflow",
+    "sandbox": "fresh landing opens the sample demo, changes maximum range, observes findings, and downloads a JSON preset"
+  },
+  {
+    "id": "keyboard-marker",
+    "claim": "Selected emitters move with the Arrow keys.",
+    "where": "Guide, README",
+    "test": "npm run test:e2e -- --grep @claim:keyboard-marker",
+    "sandbox": "fresh demo focuses a Harbor marker, presses Arrow Right, and asserts the X field changes from 28 to 29"
+  },
+  {
+    "id": "invalid-import",
+    "claim": "An invalid import explains the problem without replacing the open map.",
+    "where": "README",
+    "test": "npm run test:e2e -- --grep @claim:invalid-import",
+    "sandbox": "fresh demo imports a CSV without name, asserts the specific error, and asserts Dock machinery remains selected"
+  },
+  {
+    "id": "demo-sandbox",
+    "claim": "Try it with sample data opens a Harbor sample in storage separate from real projects.",
+    "where": "landing action, demo banner, README",
+    "test": "npm run test:e2e -- --grep @claim:demo-sandbox",
+    "sandbox": "fresh browser context opens /?demo=1; assert the seeded map, demo banner, demo IndexedDB name, reset, and Start for real"
+  },
+  {
+    "id": "map-exports",
+    "claim": "The sample map exports labelled PNG, SVG, JSON, and CSV files.",
+    "where": "export menu, README",
+    "test": "npm run test:e2e -- --grep @claim:map-exports",
+    "sandbox": "fresh demo; download each free format and assert filename, PNG signature, SVG markup, JSON sample record, and CSV header plus three records"
+  },
+  {
+    "id": "local-project-data",
+    "claim": "Level maps stay in this browser.",
+    "where": "landing facts, footer, README, privacy",
+    "test": "npm run test:e2e -- --grep @claim:local-project-data",
+    "sandbox": "fresh demo; edit an emitter, record all requests, and assert only same-origin traffic plus the demo-only IndexedDB database"
+  },
+  {
+    "id": "offline-reload",
+    "claim": "Works offline after the first visit.",
+    "where": "landing facts, README, offline page",
+    "test": "npm run test:e2e -- --grep @claim:offline-reload",
+    "sandbox": "new browser context visits /?demo=1, waits for service-worker control, clears only HTTP cache, goes offline, reloads, and asserts the map remains usable"
+  },
+  {
+    "id": "pro-price",
+    "claim": "Optional Cartographer Pro costs $12 once.",
+    "where": "landing facts, Pro dialog, terms, README",
+    "test": "npm run test:e2e -- --grep @claim:pro-price",
+    "sandbox": "fresh demo opens the optional Pro dialog and asserts the exact one-time $12 price"
+  },
+  {
+    "id": "license-rate-limit",
+    "claim": "A browser permits five license checks in 60 seconds; the next check is a 429 with Retry-After.",
+    "where": "terms, README, .factory/license-verification.md",
+    "test": "npm run test:e2e -- --grep @claim:license-rate-limit",
+    "sandbox": "fresh demo uses six mocked invalid license tokens; assert five network checks and the sixth receives the documented retry notice"
+  }
+]

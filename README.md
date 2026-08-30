@@ -7,6 +7,14 @@ travel with a level review.
 
 Live: <https://audio-range-cartographer.sociobot.in>
 
+## Try the demo
+
+Open <https://audio-range-cartographer.sociobot.in/?demo=1> or choose **Try it
+with sample data** on the first screen. The Harbor approach sample opens in the
+separate `demo:audio-range-cartographer` IndexedDB database. **Reset demo**
+starts that sample again. **Start for real** deletes demo storage before opening
+your empty workspace. See `.factory/demo.md` for the sample and storage details.
+
 ## What v1 does
 
 - Imports JSON projects or CSV emitter lists without sending files to a server.
@@ -74,11 +82,18 @@ version per build, and removes only prior Cartographer caches on activation. The
 response policy lives in `public/staticwebapp.config.json`: hashed assets are immutable for a
 year, while HTML, the manifest, and the worker are short-lived and revalidated.
 
+Every visitor-facing claim is registered in `.factory/claims.json`. Run each listed command
+from a clean install, or run the complete browser suite with `npm run test:e2e`.
+
 ## Privacy and licensing
 
 Project data and snapshots stay in browser storage. There are no analytics, ads,
 third-party fonts, or CDN scripts. Only a Pro license token is sent to the Sociobot API for
 verification. Checkout is hosted by Sociobot/Dodo; no payment provider is embedded here.
+
+The browser allows five license checks per 60 seconds. A sixth attempt gets a local 429
+response with `Retry-After`; server 429 responses use their supplied retry time. See
+`.factory/license-verification.md` for the exact contract and regression coverage.
 
 The application source is available under the [MIT License](LICENSE). Product research,
 visual rationale, and handoff notes live in `.factory/`.

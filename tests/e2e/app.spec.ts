@@ -1,10 +1,19 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Download } from '@playwright/test';
 
-test('builds and exports a useful map end to end', async ({ page }) => {
+async function downloadContent(download: Download): Promise<Buffer> {
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  if (!stream) return Buffer.alloc(0);
+  for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  return Buffer.concat(chunks);
+}
+
+test('builds and exports a useful map end to end @claim:core-workflow', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('See the soundscape before you play it');
-  await page.getByRole('button', { name: 'Explore sample' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Map audible ranges before playtests');
+  await page.locator('#try-sample').click();
+  await expect(page).toHaveURL(/\?demo=1/);
   await expect(page.getByRole('heading', { name: 'Dock machinery' })).toBeVisible();
   await expect(page.locator('#findings-title')).toContainText('finding');
 
@@ -18,19 +27,17 @@ test('builds and exports a useful map end to end', async ({ page }) => {
   expect((await download).suggestedFilename()).toBe('harbor-approach.json');
 });
 
-test('supports keyboard placement and emitter movement', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Start blank' }).click();
-  await page.getByRole('button', { name: /Add emitter/ }).click();
+test('supports keyboard placement and emitter movement @claim:keyboard-marker', async ({ page }) => {
+  await page.goto('/?demo=1');
   const marker = page.locator('.emitter').first();
   await marker.focus();
   await marker.press('ArrowRight');
-  await expect(page.getByLabel('X position')).toHaveValue('51');
+  await expect(page.getByLabel('X position')).toHaveValue('29');
 });
 
-test('reports invalid imports without replacing the project', async ({ page }) => {
+test('reports invalid imports without replacing the project @claim:invalid-import', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Explore sample' }).click();
+  await page.locator('#try-sample').click();
   await page.locator('#file-input').setInputFiles({ name: 'bad.csv', mimeType: 'text/csv', buffer: Buffer.from('label,x,y\nBroken,1,2') });
   await expect(page.getByRole('status')).toContainText('missing the “name” column');
   await expect(page.getByRole('heading', { name: 'Dock machinery' })).toBeVisible();
@@ -62,6 +69,9 @@ test('has no serious accessibility violations with interactive markers and on th
   await page.goto('/privacy');
   const privacy = await new AxeBuilder({ page }).analyze();
   expect(privacy.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
+  await page.goto('/terms');
+  const terms = await new AxeBuilder({ page }).analyze();
+  expect(terms.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
 
 test('keeps footer controls touch-safe and Terms within the 390px viewport @regression:mobile-footer-terms', async ({ page }) => {
@@ -107,36 +117,121 @@ test('keeps footer controls touch-safe and Terms within the 390px viewport @regr
   }
 });
 
-test('precache survives an HTTP-cache eviction before an offline reload', async ({ page, context }) => {
-  await page.goto('/');
-  await page.waitForFunction(async () => {
-    if (!('serviceWorker' in navigator)) return false;
-    await navigator.serviceWorker.ready;
-    return Boolean(navigator.serviceWorker.controller);
-  });
+test('uses a separate, resettable storage namespace for the direct harbor demo @claim:demo-sandbox', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page).toHaveTitle('Demo — Audio Range Cartographer');
+  await expect(page.locator('#demo-banner')).toContainText('Demo — sample data, nothing is saved to your real project.');
+  await expect(page.getByRole('heading', { name: 'Dock machinery' })).toBeVisible();
+  await expect(page.locator('#project-title')).toHaveValue('Harbor approach');
 
-  const cachedPaths = await page.evaluate(async () => {
-    const cacheNames = (await caches.keys()).filter((name) => name.startsWith('arc-'));
-    const entries = await Promise.all(cacheNames.map(async (name) => (await caches.open(name)).keys()));
-    return entries.flat().map((request) => new URL(request.url).pathname);
-  });
-  expect(cachedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.js$/));
-  expect(cachedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.css$/));
-  // Azure consumes this deployment configuration instead of publishing it.
-  expect(cachedPaths).not.toContain('/staticwebapp.config.json');
+  const databaseNames = await page.evaluate(async () => (await indexedDB.databases()).map((database) => database.name));
+  expect(databaseNames).toContain('demo:audio-range-cartographer');
+  expect(databaseNames).not.toContain('audio-range-cartographer');
 
-  // This is the verifier's P1 reproduction: preserve Cache API/SW storage,
-  // clear only the ordinary HTTP cache, then reload with the network disabled.
-  const cdp = await context.newCDPSession(page);
-  await cdp.send('Network.clearBrowserCache');
-  const retainedPaths = await page.evaluate(async () => {
-    const cacheNames = (await caches.keys()).filter((name) => name.startsWith('arc-'));
-    return (await Promise.all(cacheNames.map(async (name) => (await caches.open(name)).keys()))).flat().map((request) => new URL(request.url).pathname);
+  await page.locator('#project-title').fill('Changed demo');
+  await page.locator('#project-title').blur();
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  await expect(page.locator('#project-title')).toHaveValue('Harbor approach');
+  await page.getByRole('button', { name: 'Start for real' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Map audible ranges before playtests');
+  const namesAfterLeavingDemo = await page.evaluate(async () => (await indexedDB.databases()).map((database) => database.name));
+  expect(namesAfterLeavingDemo).toContain('audio-range-cartographer');
+  expect(namesAfterLeavingDemo).not.toContain('demo:audio-range-cartographer');
+});
+
+test('exports labelled PNG, SVG, JSON, and CSV from the clean demo @claim:map-exports', async ({ page }) => {
+  await page.goto('/?demo=1');
+
+  const exportMap = async (name: RegExp) => {
+    await page.locator('#export-menu summary').click();
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name }).click();
+    return download;
+  };
+
+  const png = await exportMap(/standard-resolution PNG map/i);
+  expect((await png).suggestedFilename()).toBe('harbor-approach.png');
+  expect((await downloadContent(await png)).subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const svg = await exportMap(/editable SVG map/i);
+  expect((await svg).suggestedFilename()).toBe('harbor-approach.svg');
+  expect((await downloadContent(await svg)).toString()).toContain('<svg');
+  const preset = await exportMap(/preset JSON/i);
+  expect((await preset).suggestedFilename()).toBe('harbor-approach.json');
+  expect(JSON.parse((await downloadContent(await preset)).toString())).toMatchObject({ title: 'Harbor approach', emitters: expect.arrayContaining([expect.objectContaining({ name: 'Dock machinery' })]) });
+  const csv = await exportMap(/emitter CSV/i);
+  expect((await csv).suggestedFilename()).toBe('harbor-approach.csv');
+  const csvText = (await downloadContent(await csv)).toString();
+  expect(csvText).toContain('name,x,y,innerRadius,maxDistance,curve,color,notes');
+  expect(csvText.trim().split('\n')).toHaveLength(4);
+});
+
+test('keeps clean-demo project use local and same-origin only @claim:local-project-data', async ({ page, baseURL }) => {
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  await page.goto('/?demo=1');
+  await page.getByLabel('Max range').fill('18');
+  await page.getByLabel('Max range').blur();
+  await expect(page.getByLabel('Max range')).toHaveValue('18');
+  await page.waitForTimeout(450);
+
+  expect(requests.length).toBeGreaterThan(0);
+  for (const request of requests) expect(new URL(request).origin).toBe(new URL(baseURL ?? 'http://127.0.0.1:4173').origin);
+  const databaseNames = await page.evaluate(async () => (await indexedDB.databases()).map((database) => database.name));
+  expect(databaseNames).toContain('demo:audio-range-cartographer');
+  expect(databaseNames).not.toContain('audio-range-cartographer');
+});
+
+test('precache survives an HTTP-cache eviction before an offline demo reload @claim:offline-reload', async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    await page.goto('/?demo=1');
+    await page.waitForFunction(async () => {
+      if (!('serviceWorker' in navigator)) return false;
+      await navigator.serviceWorker.ready;
+      return Boolean(navigator.serviceWorker.controller);
+    });
+
+    const cachedPaths = await page.evaluate(async () => {
+      const cacheNames = (await caches.keys()).filter((name) => name.startsWith('arc-'));
+      const entries = await Promise.all(cacheNames.map(async (name) => (await caches.open(name)).keys()));
+      return entries.flat().map((request) => new URL(request.url).pathname);
+    });
+    expect(cachedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.js$/));
+    expect(cachedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.css$/));
+    expect(cachedPaths).not.toContain('/staticwebapp.config.json');
+
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Network.clearBrowserCache');
+    await context.setOffline(true);
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dock machinery' })).toBeVisible();
+    await expect(page.getByText('Offline · changes stay local')).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test('shows the published one-time Pro price in the clean demo @claim:pro-price', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: 'Unlock Pro · $12' }).click();
+  await expect(page.locator('#pro-dialog .price')).toContainText('$12');
+  await expect(page.locator('#pro-dialog .price')).toContainText('once');
+});
+
+test('returns a local 429 with Retry-After after five license checks @claim:license-rate-limit', async ({ page }) => {
+  let checks = 0;
+  await page.route(/https:\/\/api\.sociobot\.in\/api\/v1\/products\/audio-range-cartographer\/verify\?license=/, (route) => {
+    checks += 1;
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ valid: false, reason: 'invalid', expires_at: null }) });
   });
-  expect(retainedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.js$/));
-  expect(retainedPaths).toContainEqual(expect.stringMatching(/^\/assets\/index-.+\.css$/));
-  await context.setOffline(true);
-  await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.getByText('Offline · changes stay local')).toBeVisible();
+  for (let index = 1; index <= 5; index += 1) {
+    await page.goto(`/?demo=1&license=license_rate_${index}`);
+    await expect(page.getByRole('status')).toContainText('License no longer active');
+  }
+  await page.goto('/?demo=1&license=license_rate_6');
+  await expect(page.getByRole('status')).toContainText(/Too many license checks\. Try again in (?:1 minute|[1-9]\d seconds)\./);
+  expect(checks).toBe(5);
 });

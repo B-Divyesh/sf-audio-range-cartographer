@@ -1,7 +1,7 @@
 import { BUY_URL, initialLicense, storeLicense, verifyLicense } from './license';
 import { blankProject, clamp, CURVES, diagnostics, format, makeEmitter, parseProjectText, round, sampleProject } from './model';
 import { downloadBlob, downloadPng, projectCsv, projectSvg, slug } from './export';
-import { listSnapshots, loadProject, saveProject, saveSnapshot } from './storage';
+import { clearProjectStorage, listSnapshots, loadProject, saveProject, saveSnapshot, type StorageNamespace } from './storage';
 import type { Emitter, LicenseState, Project } from './types';
 
 const escapeHtml = (value: string | number): string => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char] ?? char);
@@ -10,6 +10,8 @@ export class App {
   private project: Project = blankProject();
   private selectedId: string | null = null;
   private license: LicenseState = initialLicense();
+  private readonly demo = new URLSearchParams(location.search).get('demo') === '1';
+  private readonly storageNamespace: StorageNamespace = this.demo ? 'demo' : 'real';
   private onboarding = false;
   private saveTimer = 0;
   private deleted: Emitter | null = null;
@@ -19,10 +21,15 @@ export class App {
   constructor(private readonly root: HTMLDivElement) {}
 
   async start(): Promise<void> {
+    document.title = this.demo ? 'Demo — Audio Range Cartographer' : 'Audio Range Cartographer — spatial audio range mapper';
     this.shell();
     try {
-      const saved = await loadProject();
-      if (saved) this.project = saved; else this.onboarding = true;
+      const saved = await loadProject(this.storageNamespace);
+      if (saved) { this.project = saved; if (this.demo) this.selectedId = saved.emitters[0]?.id ?? null; }
+      else if (this.demo) {
+        this.project = sampleProject(); this.selectedId = this.project.emitters[0]?.id ?? null;
+        await saveProject(this.project, this.storageNamespace);
+      } else this.onboarding = true;
     } catch { this.announce('Local storage is unavailable. You can still export your work before closing this tab.', 'error'); }
     this.render();
     this.bindStatic();
@@ -42,18 +49,22 @@ export class App {
         </a>
         <nav aria-label="Workspace actions">
           <span class="network-state" id="network-state" hidden>Offline · changes stay local</span>
+          <a class="button ghost compact" href="/?demo=1">Demo</a>
           <button class="button ghost compact" id="help-button" type="button">Guide</button>
           <button class="button pro-button compact" id="pro-button" type="button">Unlock Pro · $12</button>
         </nav>
       </header>
+      ${this.demo ? `<aside class="demo-banner" id="demo-banner" aria-label="Demo controls"><p><strong>Demo — sample data, nothing is saved to your real project.</strong><span> Reset or leave at any time.</span></p><div><button class="button ghost compact" id="reset-demo" type="button">Reset demo</button><button class="button primary compact" id="start-real" type="button">Start for real</button></div></aside>` : ''}
       <main id="main" tabindex="-1">
         <section class="workspace-heading" aria-labelledby="workspace-title">
           <div>
-            <p class="eyebrow">Spatial audio workbench</p>
-            <h1 id="workspace-title">See the soundscape before you play it</h1>
-            <p>Place emitters, compare labelled attenuation models, and catch coverage problems on a reviewable map.</p>
+            <p class="eyebrow">Spatial audio range planner</p>
+            <h1 id="workspace-title">Map audible ranges before playtests</h1>
+            <p>For indie game sound designers who need a labelled range map before a level review.</p>
+            <div class="first-screen-action"><button class="button primary" id="try-sample" type="button">Try it with sample data</button><span>Loads a harbor map in a separate demo.</span></div>
+            <ul class="plain-facts" aria-label="Product facts"><li>Works offline after the first visit.</li><li>Level maps stay in this browser.</li><li>Optional Pro: $12 once.</li></ul>
           </div>
-          <div class="save-state" id="save-state"><span aria-hidden="true"></span> Saved in this browser</div>
+          <div class="save-state" id="save-state"><span aria-hidden="true"></span> ${this.demo ? 'Saved in demo storage' : 'Saved in this browser'}</div>
         </section>
         <section class="project-bar" aria-label="Project settings">
           <label class="project-name">Level name<input id="project-title" maxlength="80" autocomplete="off" /></label>
@@ -97,7 +108,7 @@ export class App {
         </div>
       </main>
       <footer>
-        <p>Local-first. Your level data never leaves this device.</p>
+        <p>Level maps stay in this browser.</p>
         <nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><span>Original AI-assisted landscape · <a href="https://sociobot.in">Param Factory</a></span></nav>
       </footer>
       <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-text"></span><button type="button" id="toast-action" aria-label="Undo last action" hidden></button></div>
@@ -127,7 +138,7 @@ export class App {
         <text x="${emitter.x + marker * 1.8}" y="${emitter.y - marker * 1.8}" font-size="${font}">${index + 1} · ${escapeHtml(emitter.name)}</text>
       </g>`;
     }).join('');
-    const empty = this.onboarding ? `<div class="onboarding"><picture><source srcset="/assets/range-landscape-768.webp 768w, /assets/range-landscape-1200.webp 1200w" type="image/webp"><img src="/assets/range-landscape-768.jpg" width="768" height="512" alt="Abstract glass level with luminous, overlapping sonar ranges" fetchpriority="high" decoding="async"></picture><div class="onboarding-copy"><p class="eyebrow">Your level, made audible</p><h2>Map a first soundscape in minutes</h2><p>Start with a realistic example, import engine coordinates, or open a clean ${width} × ${height} ${escapeHtml(this.project.unit)} field.</p><div><button class="button primary" type="button" data-onboard="sample">Explore sample</button><button class="button ghost" type="button" data-onboard="blank">Start blank</button><label class="button ghost file-button" for="file-input">Import scene</label></div></div></div>` : this.project.emitters.length === 0 ? `<div class="map-empty"><span aria-hidden="true">◎</span><strong>No emitters yet</strong><p>Click anywhere on the grid or use “Add emitter”.</p></div>` : '';
+    const empty = this.onboarding ? `<div class="onboarding"><picture><source srcset="/assets/range-landscape-768.webp 768w, /assets/range-landscape-1200.webp 1200w" type="image/webp"><img src="/assets/range-landscape-768.jpg" width="768" height="512" alt="Abstract glass level with luminous, overlapping sonar ranges" fetchpriority="high" decoding="async"></picture><div class="onboarding-copy"><p class="eyebrow">Start a range map</p><h2>Try the harbor sample map</h2><p>See three labelled emitters, then change a range or import engine coordinates.</p><div><button class="button primary" type="button" data-onboard="sample">Try it with sample data</button><button class="button ghost" type="button" data-onboard="blank">Start blank</button><label class="button ghost file-button" for="file-input">Import scene</label></div></div></div>` : this.project.emitters.length === 0 ? `<div class="map-empty"><span aria-hidden="true">◎</span><strong>No emitters yet</strong><p>Click anywhere on the grid or use “Add emitter”.</p></div>` : '';
     map.innerHTML = `<svg class="range-map" id="range-map" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" role="group" aria-labelledby="map-svg-title map-svg-desc"><title id="map-svg-title">${escapeHtml(this.project.title)} interactive audibility map</title><desc id="map-svg-desc">${this.project.emitters.length} emitters on a ${width} by ${height} ${escapeHtml(this.project.unit)} field. Select markers for details; findings are listed after the map. Click an empty area to place an emitter.</desc><rect class="map-bg" width="${width}" height="${height}"/><g class="grid">${gridLines}</g>${emitters}<rect class="map-border" x="0" y="0" width="${width}" height="${height}"/></svg>${empty}`;
     this.bindMap();
   }
@@ -180,6 +191,9 @@ export class App {
     this.root.querySelector<HTMLButtonElement>('#pro-button')?.addEventListener('click', () => this.openDialog('pro-dialog'));
     this.root.querySelector<HTMLButtonElement>('#verify-button')?.addEventListener('click', () => this.restoreLicense());
     this.root.querySelector<HTMLButtonElement>('#toast-action')?.addEventListener('click', () => this.toastAction?.());
+    this.root.querySelector<HTMLButtonElement>('#try-sample')?.addEventListener('click', () => this.enterDemo());
+    this.root.querySelector<HTMLButtonElement>('#reset-demo')?.addEventListener('click', () => { void this.resetDemo(); });
+    this.root.querySelector<HTMLButtonElement>('#start-real')?.addEventListener('click', () => { void this.startForReal(); });
   }
 
   private bindMap(): void {
@@ -190,7 +204,7 @@ export class App {
       group.addEventListener('keydown', (event) => this.markerKey(event, group.dataset.emitterId ?? ''));
       group.querySelector('.emitter-hit')?.addEventListener('pointerdown', (event) => this.beginDrag(event as PointerEvent, group.dataset.emitterId ?? '', svg));
     });
-    this.root.querySelectorAll<HTMLButtonElement>('[data-onboard]').forEach((button) => button.addEventListener('click', () => { this.onboarding = false; if (button.dataset.onboard === 'sample') { this.project = sampleProject(); this.selectedId = this.project.emitters[0]?.id ?? null; this.changed(); } this.render(); }));
+    this.root.querySelectorAll<HTMLButtonElement>('[data-onboard]').forEach((button) => button.addEventListener('click', () => { if (button.dataset.onboard === 'sample') { this.enterDemo(); return; } this.onboarding = false; this.render(); }));
   }
 
   private addEmitter(x?: number, y?: number): void {
@@ -257,7 +271,7 @@ export class App {
 
   private changed(): void {
     this.project.updatedAt = new Date().toISOString(); const indicator = this.root.querySelector('#save-state'); if (indicator) indicator.innerHTML = '<span aria-hidden="true"></span> Saving…'; clearTimeout(this.saveTimer);
-    this.saveTimer = window.setTimeout(async () => { try { await saveProject(this.project); if (indicator) indicator.innerHTML = '<span aria-hidden="true"></span> Saved in this browser'; } catch { if (indicator) indicator.textContent = 'Export to keep this work'; } }, 350);
+    this.saveTimer = window.setTimeout(async () => { try { await saveProject(this.project, this.storageNamespace); if (indicator) indicator.innerHTML = `<span aria-hidden="true"></span> ${this.demo ? 'Saved in demo storage' : 'Saved in this browser'}`; } catch { if (indicator) indicator.textContent = 'Export to keep this work'; } }, 350);
   }
 
   private updateLicenseUi(): void {
@@ -273,9 +287,29 @@ export class App {
   private async openSnapshots(): Promise<void> {
     const list = this.root.querySelector<HTMLDivElement>('#snapshot-list'); if (!list) return;
     list.innerHTML = '<p class="loading-state">Loading local checkpoints…</p>'; this.openDialog('snapshot-dialog');
-    const snapshots = await listSnapshots(); list.innerHTML = snapshots.length ? `<ul class="snapshot-list">${snapshots.map(({ key, project }) => `<li><button type="button" data-snapshot="${key}"><strong>${escapeHtml(project.title)}</strong><span>${new Date(Number(key.split(':')[1])).toLocaleString()} · ${project.emitters.length} emitters</span></button></li>`).join('')}</ul>` : '<p class="dialog-note">No checkpoints yet. Save one before changing a group of ranges.</p>';
+    const snapshots = await listSnapshots(this.storageNamespace); list.innerHTML = snapshots.length ? `<ul class="snapshot-list">${snapshots.map(({ key, project }) => `<li><button type="button" data-snapshot="${key}"><strong>${escapeHtml(project.title)}</strong><span>${new Date(Number(key.split(':')[1])).toLocaleString()} · ${project.emitters.length} emitters</span></button></li>`).join('')}</ul>` : '<p class="dialog-note">No checkpoints yet. Save one before changing a group of ranges.</p>';
     list.querySelectorAll<HTMLButtonElement>('[data-snapshot]').forEach((button, index) => button.addEventListener('click', () => { const chosen = snapshots[index]; if (!chosen) return; this.project = structuredClone(chosen.project); this.selectedId = null; this.changed(); this.render(); (this.root.querySelector('#snapshot-dialog') as HTMLDialogElement).close(); this.announce('Checkpoint restored.', 'success'); }));
-    this.root.querySelector<HTMLButtonElement>('#save-snapshot')?.addEventListener('click', async () => { await saveSnapshot(structuredClone(this.project)); this.announce('Local checkpoint saved.', 'success'); (this.root.querySelector('#snapshot-dialog') as HTMLDialogElement).close(); }, { once: true });
+    this.root.querySelector<HTMLButtonElement>('#save-snapshot')?.addEventListener('click', async () => { await saveSnapshot(structuredClone(this.project), this.storageNamespace); this.announce('Local checkpoint saved.', 'success'); (this.root.querySelector('#snapshot-dialog') as HTMLDialogElement).close(); }, { once: true });
+  }
+
+  private enterDemo(): void { location.assign('/?demo=1'); }
+
+  private async resetDemo(): Promise<void> {
+    if (!this.demo) return;
+    clearTimeout(this.saveTimer);
+    try {
+      await clearProjectStorage('demo');
+      this.project = sampleProject(); this.selectedId = this.project.emitters[0]?.id ?? null; this.onboarding = false;
+      await saveProject(this.project, 'demo'); this.render(); this.announce('Demo reset to the harbor sample.', 'success');
+    } catch (error) { this.announce(error instanceof Error ? error.message : 'Could not reset the demo. Reload and try again.', 'error'); }
+  }
+
+  private async startForReal(): Promise<void> {
+    if (!this.demo) return;
+    clearTimeout(this.saveTimer);
+    try { await clearProjectStorage('demo'); }
+    catch { this.announce('Could not clear demo storage. Close other Cartographer tabs and try again.', 'error'); return; }
+    location.assign('/');
   }
 
   private openDialog(id: string): void { const dialog = this.root.querySelector<HTMLDialogElement>(`#${id}`); if (dialog && !dialog.open) dialog.showModal(); }
@@ -309,6 +343,6 @@ function motionOk(): boolean { return !matchMedia('(prefers-reduced-motion: redu
 
 export function renderLegalPage(root: HTMLDivElement, page: 'privacy' | 'terms'): void {
   const privacy = page === 'privacy';
-  root.innerHTML = `<header class="topbar legal-top"><a class="brand" href="/"><img src="/icon.svg" width="40" height="40" alt=""><span><strong>Audio Range Cartographer</strong><small>Back to workspace</small></span></a></header><main id="main" class="legal-page"><p class="eyebrow">${privacy ? 'Privacy' : 'Terms'}</p><h1>${privacy ? 'Your maps stay yours' : 'Straightforward terms'}</h1><p class="lede">Effective 28 August 2026</p>${privacy ? `<h2>What stays on your device</h2><p>Level names, dimensions, emitter coordinates, notes, local snapshots, and license tokens are stored in your browser. Audio Range Cartographer does not upload, sync, or inspect project data.</p><h2>License verification</h2><p>If you restore or buy Pro, your license token is sent to the Sociobot billing API only to confirm validity. Sociobot/Dodo processes checkout and acts as merchant of record. This app has no analytics, advertising, tracking pixels, or third-party runtime scripts.</p><h2>Your controls</h2><p>Use JSON or CSV export to keep a portable copy. Clear this site’s browser storage to remove local project and license data. Uninstalling the PWA removes the cached app shell according to your browser’s behavior.</p><h2>Contact</h2><p>For privacy requests, contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a>.</p>` : `<h2>Using the tool</h2><p>You may use exported maps and presets in personal or commercial projects. The tool is an engine-neutral planning aid; attenuation curves differ between engines and must be verified by listening in the target runtime.</p><h2>Pro purchase</h2><p>Cartographer Pro costs $12 as a one-time purchase and unlocks 4× PNG export and local snapshots. Sociobot/Dodo is the merchant of record and handles payment and refunds. A refund or chargeback revokes the associated license.</p><h2>Availability and liability</h2><p>The software is provided “as is,” without warranties. Keep exported project copies before clearing browser data. We may improve or discontinue the hosted app, but exported JSON, CSV, SVG, and PNG files remain yours.</p><h2>Acceptable use</h2><p>Do not probe the license service, bypass access controls, or use the service unlawfully. These terms do not restrict rights granted by the repository’s MIT license.</p>`}<p><a class="button primary" href="/">Return to the workspace</a></p></main><footer><p>Audio Range Cartographer</p><nav><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav></footer>`;
+  root.innerHTML = `<header class="topbar legal-top"><a class="brand" href="/"><img src="/icon.svg" width="40" height="40" alt=""><span><strong>Audio Range Cartographer</strong><small>Back to workspace</small></span></a></header><main id="main" class="legal-page"><p class="eyebrow">${privacy ? 'Privacy' : 'Terms'}</p><h1>${privacy ? 'Your maps stay yours' : 'Straightforward terms'}</h1><p class="lede">Effective 28 August 2026</p>${privacy ? `<h2>What stays on your device</h2><p>Level names, dimensions, emitter coordinates, notes, local snapshots, and license tokens are stored in your browser. Audio Range Cartographer does not upload, sync, or inspect project data.</p><h2>Demo storage</h2><p>The Harbor demo uses a separate browser database. Reset demo deletes that sample. Start for real deletes demo storage before opening the real workspace.</p><h2>License verification</h2><p>If you restore or buy Pro, your license token is sent to the Sociobot billing API only to confirm validity. Sociobot/Dodo processes checkout and acts as merchant of record. This app has no analytics, advertising, tracking pixels, or third-party runtime scripts.</p><h2>Your controls</h2><p>Use JSON or CSV export to keep a portable copy. Clear this site’s browser storage to remove local project and license data. Uninstalling the PWA removes the cached app shell according to your browser’s behavior.</p><h2>Contact</h2><p>For privacy requests, contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a>.</p>` : `<h2>Using the tool</h2><p>You may use exported maps and presets in personal or commercial projects. The tool is an engine-neutral planning aid; attenuation curves differ between engines and must be verified by listening in the target runtime.</p><h2>Pro purchase</h2><p>Cartographer Pro costs $12 as a one-time purchase and unlocks 4× PNG export and local snapshots. Sociobot/Dodo is the merchant of record and handles payment and refunds. A refund or chargeback revokes the associated license.</p><h2>License checks</h2><p>The browser permits five license checks in 60 seconds. The next check is held locally and receives a 429 response with Retry-After. If the Sociobot API returns a 429, this app uses its Retry-After value. The app does not retry automatically.</p><h2>Availability and liability</h2><p>The software is provided “as is,” without warranties. Keep exported project copies before clearing browser data. We may improve or discontinue the hosted app, but exported JSON, CSV, SVG, and PNG files remain yours.</p><h2>Acceptable use</h2><p>Do not probe the license service, bypass access controls, or use the service unlawfully. These terms do not restrict rights granted by the repository’s MIT license.</p>`}<p><a class="button primary" href="/">Return to the workspace</a></p></main><footer><p>Audio Range Cartographer</p><nav><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav></footer>`;
   document.title = `${privacy ? 'Privacy' : 'Terms'} — Audio Range Cartographer`;
 }
