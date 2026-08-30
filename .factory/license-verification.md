@@ -7,8 +7,8 @@ data is never part of that request.
 The browser pauses a sixth verification attempt after **five attempts in 60
 seconds**. This local safeguard stops repeated clicks before they reach the
 billing service and tells the buyer when to try again. It is not presented as a
-server response. If the Sociobot API itself returns `429`, its `Retry-After`
-value is honored too. There is no automatic retry loop.
+server response. When an upstream `429` makes `Retry-After` available to the
+browser, that wait time is honored too. There is no automatic retry loop.
 
 This static PWA cannot set a gateway-wide limit on `api.sociobot.in`; the local
 pacing prevents one browser from hammering that endpoint. The controlled

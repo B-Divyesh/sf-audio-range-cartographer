@@ -94,8 +94,8 @@ third-party fonts, or CDN scripts. Only a Pro license token is sent to the Socio
 verification. Checkout is hosted by Sociobot/Dodo; no payment provider is embedded here.
 
 The browser pauses a sixth license check after five attempts in one minute. This is a
-local safeguard, not a billing-server response; server 429 responses use their supplied
-retry time. See `.factory/license-verification.md` for the exact behavior and regression
+local safeguard, not a billing-server response. If the browser can read an upstream
+`Retry-After` value, it uses that wait time. See `.factory/license-verification.md` for the exact behavior and regression
 coverage.
 
 The application source is available under the [MIT License](LICENSE). Product research,
