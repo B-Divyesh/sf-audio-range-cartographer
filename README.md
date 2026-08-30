@@ -78,8 +78,9 @@ browser API and verifies Chromium desktop, a 390px mobile viewport, offline relo
 downloads, keyboard operation, and axe accessibility checks.
 
 The production build generates `dist/sw.js` from Vite's asset manifest. It precaches every
-hashed application script and stylesheet before the first offline reload, uses a unique cache
-version per build, and removes only prior Cartographer caches on activation. The static-host
+hashed application script and stylesheet before the first offline reload, uses a content-derived
+cache version, and removes only prior Cartographer caches on activation. `npm run test:static`
+rebuilds twice and requires byte-identical output. The static-host
 response policy lives in `public/staticwebapp.config.json`: hashed assets are immutable for a
 year, while HTML, the manifest, and the worker are short-lived and revalidated.
 

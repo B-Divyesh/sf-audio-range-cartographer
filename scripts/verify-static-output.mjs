@@ -20,3 +20,7 @@ const sitemap = readFileSync(resolve(output, 'sitemap.xml'), 'utf8');
 for (const route of ['https://audio-range-cartographer.sociobot.in/', 'https://audio-range-cartographer.sociobot.in/privacy/', 'https://audio-range-cartographer.sociobot.in/terms/']) {
   if (!sitemap.includes(route)) throw new Error(`Sitemap is missing ${route}`);
 }
+
+const serviceWorker = readFileSync(resolve(output, 'sw.js'), 'utf8');
+if (!/const VERSION = "arc-[a-f0-9]{12}";/.test(serviceWorker)) throw new Error('Service worker is missing its content-derived cache identifier.');
+if (serviceWorker.includes('Date.now()')) throw new Error('Service worker cache identifier must not be time-derived.');

@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "build": "tsc --noEmit && vite build",
-    "test:static": "npm run build && node scripts/verify-static-output.mjs",
+    "test:static": "node scripts/verify-reproducible-build.mjs && node scripts/verify-static-output.mjs",
+    "test:gateway": "node scripts/verify-sociobot-license-gateway.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:e2e": "playwright test"

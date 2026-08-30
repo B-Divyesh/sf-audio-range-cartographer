@@ -7,7 +7,7 @@ const ATTEMPTS_KEY = `${KEY}:verification-attempts`;
 const BLOCKED_UNTIL_KEY = `${KEY}:verification-blocked-until`;
 const API = import.meta.env.VITE_SOCIOBOT_API_URL || 'https://api.sociobot.in';
 export const BUY_URL = `${API}/api/v1/products/${SLUG}/checkout`;
-export const LICENSE_VERIFICATION_ALLOWANCE = { requests: 5, windowMs: 60_000 } as const;
+export const LOCAL_LICENSE_CHECK_PACING = { requests: 5, windowMs: 60_000 } as const;
 
 type CachedVerdict = { token?: string; valid?: boolean; checkedAt?: number };
 
@@ -18,12 +18,12 @@ function cachedVerdict(token: string): CachedVerdict | null {
   } catch { return null; }
 }
 
-function retryAfterMs(value: string | null, now = Date.now()): number {
-  if (!value) return LICENSE_VERIFICATION_ALLOWANCE.windowMs;
+function retryAfterMs(value: string | null, now = Date.now()): number | null {
+  if (!value) return null;
   const seconds = Number(value);
   if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1000);
   const date = Date.parse(value);
-  return Number.isFinite(date) ? Math.max(0, date - now) : LICENSE_VERIFICATION_ALLOWANCE.windowMs;
+  return Number.isFinite(date) ? Math.max(0, date - now) : null;
 }
 
 function formatRetry(ms: number): string {
@@ -37,9 +37,9 @@ function formatRetry(ms: number): string {
  * billing service can make a server-side HTTP rate-limit decision.
  */
 export function localRetryAfterMs(attempts: number[], now = Date.now()): number | null {
-  const recent = attempts.filter((attempt) => attempt > now - LICENSE_VERIFICATION_ALLOWANCE.windowMs && attempt <= now).sort((a, b) => a - b);
-  if (recent.length < LICENSE_VERIFICATION_ALLOWANCE.requests) return null;
-  return Math.max(1, recent[0] + LICENSE_VERIFICATION_ALLOWANCE.windowMs - now);
+  const recent = attempts.filter((attempt) => attempt > now - LOCAL_LICENSE_CHECK_PACING.windowMs && attempt <= now).sort((a, b) => a - b);
+  if (recent.length < LOCAL_LICENSE_CHECK_PACING.requests) return null;
+  return Math.max(1, recent[0] + LOCAL_LICENSE_CHECK_PACING.windowMs - now);
 }
 
 function readAttempts(): number[] {
@@ -52,7 +52,7 @@ function readAttempts(): number[] {
 function reserveAttempt(now = Date.now()): number | null {
   const blockedUntil = Number(localStorage.getItem(BLOCKED_UNTIL_KEY));
   if (Number.isFinite(blockedUntil) && blockedUntil > now) return blockedUntil - now;
-  const attempts = readAttempts().filter((attempt) => attempt > now - LICENSE_VERIFICATION_ALLOWANCE.windowMs && attempt <= now);
+  const attempts = readAttempts().filter((attempt) => attempt > now - LOCAL_LICENSE_CHECK_PACING.windowMs && attempt <= now);
   const limited = localRetryAfterMs(attempts, now);
   if (limited) return limited;
   localStorage.setItem(ATTEMPTS_KEY, JSON.stringify([...attempts, now]));
@@ -65,7 +65,8 @@ function pacingNotice(retry: number): string {
 }
 
 function upstreamRateLimitNotice(response: Response): string {
-  return pacingNotice(retryAfterMs(response.headers.get('Retry-After')));
+  const retry = retryAfterMs(response.headers.get('Retry-After'));
+  return retry === null ? 'License verification is temporarily unavailable. Your free workspace remains available.' : pacingNotice(retry);
 }
 
 export function initialLicense(): LicenseState {

@@ -59,6 +59,20 @@ function publicFiles(directory: string): string[] {
   });
 }
 
+/**
+ * The cache name must change when any precached bytes change, but must be
+ * identical for two clean builds of identical source. Asset paths alone are
+ * not enough because Vite copies public files without content hashes.
+ */
+function cacheVersion(output: string, precache: string[]): string {
+  const digest = createHash('sha256');
+  for (const url of precache) {
+    const file = url === '/' ? 'index.html' : url.slice(1);
+    digest.update(url).update('\0').update(readFileSync(resolve(output, file))).update('\0');
+  }
+  return `arc-${digest.digest('hex').slice(0, 12)}`;
+}
+
 function generatedServiceWorker(): Plugin {
   return {
     name: 'arc-generated-service-worker',
@@ -77,7 +91,7 @@ function generatedServiceWorker(): Plugin {
       Object.entries(manifest).filter(([, entry]) => entry.file.endsWith('.js')).forEach(([key]) => visit(key));
 
       const precache = [...new Set(['/', '/index.html', ...publicFiles(resolve(process.cwd(), 'public')), ...files].map((file) => file.startsWith('/') ? file : `/${file}`))].sort();
-      const version = `arc-${createHash('sha256').update(`${Date.now()}\n${precache.join('\n')}`).digest('hex').slice(0, 12)}`;
+      const version = cacheVersion(output, precache);
       writeFileSync(resolve(output, 'sw.js'), workerSource(version, precache));
     },
   };
@@ -87,6 +101,7 @@ export default defineConfig({
   build: {
     target: 'es2022',
     outDir: 'dist',
+    emptyOutDir: true,
     sourcemap: true,
     manifest: true,
   },

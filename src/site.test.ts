@@ -26,4 +26,11 @@ describe('static deployment fallbacks', () => {
     expect(sitemap).toContain('https://audio-range-cartographer.sociobot.in/privacy/</loc>');
     expect(sitemap).toContain('https://audio-range-cartographer.sociobot.in/terms/</loc>');
   });
+
+  it('derives the service-worker cache identifier from stable precache content', () => {
+    const config = text('../vite.config.ts');
+    expect(config).toContain('function cacheVersion');
+    expect(config).toContain("digest.update(url).update('\\0').update(readFileSync(resolve(output, file)))");
+    expect(config).not.toContain('Date.now()');
+  });
 });

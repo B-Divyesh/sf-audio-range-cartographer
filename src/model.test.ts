@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LICENSE_VERIFICATION_ALLOWANCE, localRetryAfterMs } from './license';
+import { LOCAL_LICENSE_CHECK_PACING, localRetryAfterMs } from './license';
 import { diagnostics, parseProjectText } from './model';
 
 describe('scene import', () => {
@@ -46,16 +46,16 @@ describe('preflight diagnostics', () => {
   });
 });
 
-describe('license verification allowance', () => {
+describe('local license-check pacing', () => {
   it('paces the sixth browser check without pretending to be a server response', () => {
     const now = 1_000_000;
-    const attempts = Array.from({ length: LICENSE_VERIFICATION_ALLOWANCE.requests }, () => now);
+    const attempts = Array.from({ length: LOCAL_LICENSE_CHECK_PACING.requests }, () => now);
     expect(localRetryAfterMs(attempts, now)).toBe(60_000);
   });
 
   it('allows a verification after the rolling window expires', () => {
     const now = 1_000_000;
-    const attempts = Array.from({ length: LICENSE_VERIFICATION_ALLOWANCE.requests }, () => now - LICENSE_VERIFICATION_ALLOWANCE.windowMs);
+    const attempts = Array.from({ length: LOCAL_LICENSE_CHECK_PACING.requests }, () => now - LOCAL_LICENSE_CHECK_PACING.windowMs);
     expect(localRetryAfterMs(attempts, now)).toBeNull();
   });
 });

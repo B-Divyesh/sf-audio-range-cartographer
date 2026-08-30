@@ -63,6 +63,17 @@ test('keeps the free workspace usable when the optional license service is unava
   await expect(page.getByRole('button', { name: 'Unlock Pro · $12' })).toBeVisible();
 });
 
+test('honors the upstream Retry-After value without affecting the free workspace @regression:license-upstream-retry-after', async ({ page }) => {
+  await page.route('https://api.sociobot.in/api/v1/products/audio-range-cartographer/verify?license=license_retry_after_123', (route) => route.fulfill({
+    status: 429,
+    headers: { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'retry-after', 'retry-after': '7' },
+    body: 'too many checks',
+  }));
+  await page.goto('/?demo=1&license=license_retry_after_123');
+  await expect(page.getByRole('status')).toContainText('Wait 7 seconds before checking another license.');
+  await expect(page.getByRole('heading', { name: 'Dock machinery' })).toBeVisible();
+});
+
 test('has no serious accessibility violations with interactive markers and on the legal page', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Start blank' }).click();
