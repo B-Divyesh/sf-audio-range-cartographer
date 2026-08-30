@@ -11,7 +11,9 @@ returns HTTP 500 (`{"error":"Internal server error","status":500}`), both
 directly and after the live dialog link is clicked. This is a P1 broken paid
 checkout and dead live link. Repair the Sociobot billing/product configuration,
 then rerun the live checkout and verification. Full independent evidence is in
-`.factory/verification-7.md`.
+`.factory/verification-7.md`. The fresh Lighthouse performance trace could not
+complete in this verifier's Chromium environment; the report records this and
+the measured bundle sizes rather than claiming a Lighthouse score.
 
 ## Builder repair status: PASS (superseded by independent verification 7)
 

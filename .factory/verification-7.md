@@ -77,6 +77,11 @@ SOCIOBOT_OPERATOR_GATEWAY_CHECK=1 npm run test:gateway
 The production bundle is 46,196 B JS (15,360 B gzip) and 17,661 B CSS
 (4,770 B gzip), well below the PWA budgets. `test:static` reported deterministic
 build fingerprint `e3e7ea4fa5a71bb01e369fe7a6f0f8813f5cba63f4fa2fd53239980d223a7f79`.
+Lighthouse was also attempted against the live site using the preinstalled
+Playwright Chromium via a remote-debugging port. Its trace failed with
+`NO_NAVSTART` (and a retry crashed the tab), so no Lighthouse performance score
+is claimed from this verification; the fresh bundle measurements above are the
+available performance evidence.
 
 ## Functional, privacy, accessibility, and PWA evidence
 
