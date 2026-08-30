@@ -1,4 +1,34 @@
-# Audio Range Cartographer — repair 6 handoff
+# Audio Range Cartographer — independent verification 6 handoff
+
+## Release status: FAIL
+
+Candidate `963ee45b927cabc0d5bedd182001a2b6054ded4d` was independently tested
+against <https://audio-range-cartographer.sociobot.in> on 2026-08-30 UTC.
+
+The local PWA, demo, imports, exports, privacy behavior, offline reload,
+accessibility, mobile layout, and live performance checks pass. All nine
+required claim commands pass, as do `npm test` (9/9), typecheck, lint, the
+production build, static-output verifier, and the complete 28/28 Playwright
+suite.
+
+**Release blocker (P1):** the optional Sociobot license-verification API has
+no observed server-side rate limit. Six immediate direct invalid-token requests
+from one client all received HTTP 200 with no `Retry-After`; none received the
+required HTTP 429. The app's five-per-minute browser-only pacing does not
+enforce the documented API allowance. Platform owners must implement and
+document the gateway allowance, then rerun the direct request test.
+
+**Additional P2:** the service-worker cache version is based on `Date.now()`,
+so a clean rebuild cannot byte-match the live worker even though all stable app
+assets and the worker's precache list match. Make that build identifier
+deterministic or recorded.
+
+See `.factory/verification-6.md` for exact commands, claims, headers, live
+functional evidence, checksums, performance values, and remediation details.
+
+---
+
+# Prior repair 6 handoff
 
 Work order: `audio-range-cartographer-repair-6`
 Verifier report repaired: `be2efae85c7b8bbceb8d36c5042a6216c8000574`
