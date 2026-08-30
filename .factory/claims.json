@@ -56,10 +56,10 @@
     "sandbox": "fresh demo opens the optional Pro dialog and asserts the exact one-time $12 price"
   },
   {
-    "id": "license-rate-limit",
-    "claim": "A browser permits five license checks in 60 seconds; the next check is a 429 with Retry-After.",
+    "id": "license-check-pacing",
+    "claim": "A browser pauses a sixth license check after five attempts in one minute.",
     "where": "terms, README, .factory/license-verification.md",
-    "test": "npm run test:e2e -- --grep @claim:license-rate-limit",
-    "sandbox": "fresh demo uses six mocked invalid license tokens; assert five network checks and the sixth receives the documented retry notice"
+    "test": "npm run test:e2e -- --grep @claim:license-check-pacing",
+    "sandbox": "fresh demo uses six mocked invalid license tokens; assert five network checks and a sixth local attempt receives the wait notice"
   }
 ]

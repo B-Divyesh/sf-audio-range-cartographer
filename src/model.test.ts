@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LICENSE_VERIFICATION_ALLOWANCE, localRateLimitResponse } from './license';
+import { LICENSE_VERIFICATION_ALLOWANCE, localRetryAfterMs } from './license';
 import { diagnostics, parseProjectText } from './model';
 
 describe('scene import', () => {
@@ -47,17 +47,15 @@ describe('preflight diagnostics', () => {
 });
 
 describe('license verification allowance', () => {
-  it('returns an exact 429 and Retry-After after five attempts in one minute', () => {
+  it('paces the sixth browser check without pretending to be a server response', () => {
     const now = 1_000_000;
     const attempts = Array.from({ length: LICENSE_VERIFICATION_ALLOWANCE.requests }, () => now);
-    const response = localRateLimitResponse(attempts, now);
-    expect(response?.status).toBe(429);
-    expect(response?.headers.get('Retry-After')).toBe('60');
+    expect(localRetryAfterMs(attempts, now)).toBe(60_000);
   });
 
   it('allows a verification after the rolling window expires', () => {
     const now = 1_000_000;
     const attempts = Array.from({ length: LICENSE_VERIFICATION_ALLOWANCE.requests }, () => now - LICENSE_VERIFICATION_ALLOWANCE.windowMs);
-    expect(localRateLimitResponse(attempts, now)).toBeNull();
+    expect(localRetryAfterMs(attempts, now)).toBeNull();
   });
 });

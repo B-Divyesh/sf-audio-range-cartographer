@@ -68,6 +68,7 @@ npm run typecheck
 npm run lint
 npm test
 npm run build
+npm run test:static
 npm run test:e2e
 ```
 
@@ -91,9 +92,10 @@ Project data and snapshots stay in browser storage. There are no analytics, ads,
 third-party fonts, or CDN scripts. Only a Pro license token is sent to the Sociobot API for
 verification. Checkout is hosted by Sociobot/Dodo; no payment provider is embedded here.
 
-The browser allows five license checks per 60 seconds. A sixth attempt gets a local 429
-response with `Retry-After`; server 429 responses use their supplied retry time. See
-`.factory/license-verification.md` for the exact contract and regression coverage.
+The browser pauses a sixth license check after five attempts in one minute. This is a
+local safeguard, not a billing-server response; server 429 responses use their supplied
+retry time. See `.factory/license-verification.md` for the exact behavior and regression
+coverage.
 
 The application source is available under the [MIT License](LICENSE). Product research,
 visual rationale, and handoff notes live in `.factory/`.

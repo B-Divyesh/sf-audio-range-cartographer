@@ -55,6 +55,14 @@ test('restores and verifies a one-time Pro license', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('sb_license:audio-range-cartographer'))).toBe('license_test_123');
 });
 
+test('keeps the free workspace usable when the optional license service is unavailable @regression:license-service-unavailable', async ({ page }) => {
+  await page.route('https://api.sociobot.in/api/v1/products/audio-range-cartographer/verify?license=license_unavailable_123', (route) => route.fulfill({ status: 503, body: 'temporarily unavailable' }));
+  await page.goto('/?demo=1&license=license_unavailable_123');
+  await expect(page.getByRole('status')).toContainText('License verification is temporarily unavailable. Your free workspace remains available.');
+  await expect(page.getByRole('heading', { name: 'Dock machinery' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unlock Pro · $12' })).toBeVisible();
+});
+
 test('has no serious accessibility violations with interactive markers and on the legal page', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Start blank' }).click();
@@ -74,9 +82,30 @@ test('has no serious accessibility violations with interactive markers and on th
   expect(terms.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
 
-test('keeps footer controls touch-safe and Terms within the 390px viewport @regression:mobile-footer-terms', async ({ page }) => {
+test('includes the product-styled not-found document in the static build @regression:404-document', async ({ page }) => {
+  const response = await page.goto('/404.html');
+  expect(response?.ok()).toBe(true);
+  await expect(page).toHaveTitle('Page not found — Audio Range Cartographer');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Map page not found');
+  await expect(page.getByRole('link', { name: 'Open the range planner' })).toHaveAttribute('href', '/');
+});
+
+test('keeps demo and footer controls touch-safe and Terms within the 390px viewport @regression:mobile-touch-targets', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/?demo=1');
+  const demoTargets = await page.locator('#demo-banner button').evaluateAll((buttons) => buttons.map((button) => {
+    const box = button.getBoundingClientRect();
+    return { label: button.textContent?.trim(), width: box.width, height: box.height };
+  }));
+  expect(demoTargets).toEqual(expect.arrayContaining([
+    expect.objectContaining({ label: 'Reset demo', width: expect.any(Number), height: expect.any(Number) }),
+    expect.objectContaining({ label: 'Start for real', width: expect.any(Number), height: expect.any(Number) }),
+  ]));
+  for (const target of demoTargets) {
+    expect(target.width).toBeGreaterThanOrEqual(44);
+    expect(target.height).toBeGreaterThanOrEqual(44);
+  }
+
   await page.locator('footer').scrollIntoViewIfNeeded();
   const footerTargets = await page.locator('footer a').evaluateAll((links) => links.map((link) => {
     const box = link.getBoundingClientRect();
@@ -221,7 +250,7 @@ test('shows the published one-time Pro price in the clean demo @claim:pro-price'
   await expect(page.locator('#pro-dialog .price')).toContainText('once');
 });
 
-test('returns a local 429 with Retry-After after five license checks @claim:license-rate-limit', async ({ page }) => {
+test('pauses a sixth local license check without fabricating a server response @claim:license-check-pacing', async ({ page }) => {
   let checks = 0;
   await page.route(/https:\/\/api\.sociobot\.in\/api\/v1\/products\/audio-range-cartographer\/verify\?license=/, (route) => {
     checks += 1;
@@ -232,6 +261,6 @@ test('returns a local 429 with Retry-After after five license checks @claim:lice
     await expect(page.getByRole('status')).toContainText('License no longer active');
   }
   await page.goto('/?demo=1&license=license_rate_6');
-  await expect(page.getByRole('status')).toContainText(/Too many license checks\. Try again in (?:1 minute|[1-9]\d seconds)\./);
+  await expect(page.getByRole('status')).toContainText(/Wait (?:1 minute|[1-9]\d seconds) before checking another license\./);
   expect(checks).toBe(5);
 });

@@ -54,6 +54,7 @@ textarea { resize: vertical; min-height: 74px; }
 .button.primary:hover { background: #8bffe2; }
 .button.ghost { background: transparent; }
 .button.compact { min-height: 40px; padding: 8px 12px; font-size: 13px; }
+.demo-banner .button.compact { min-height: 44px; }
 .pro-button { border-color: #7e6031; color: var(--warning); background: #2d2418; }
 .pro-button.unlocked { border-color: #3f795b; color: var(--success); background: #102d21; }
 .button.danger { border-color: #74443f; color: #ffc3bc; background: #2b1918; }

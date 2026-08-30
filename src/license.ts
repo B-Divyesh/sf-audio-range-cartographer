@@ -31,11 +31,15 @@ function formatRetry(ms: number): string {
   return seconds >= 60 ? `${Math.ceil(seconds / 60)} minute${seconds >= 120 ? 's' : ''}` : `${seconds} seconds`;
 }
 
-export function localRateLimitResponse(attempts: number[], now = Date.now()): Response | null {
+/**
+ * Browser-only pacing protects the optional restore flow from repeated clicks.
+ * It deliberately returns a duration, not a synthetic HTTP response: only the
+ * billing service can make a server-side HTTP rate-limit decision.
+ */
+export function localRetryAfterMs(attempts: number[], now = Date.now()): number | null {
   const recent = attempts.filter((attempt) => attempt > now - LICENSE_VERIFICATION_ALLOWANCE.windowMs && attempt <= now).sort((a, b) => a - b);
   if (recent.length < LICENSE_VERIFICATION_ALLOWANCE.requests) return null;
-  const retrySeconds = Math.max(1, Math.ceil((recent[0] + LICENSE_VERIFICATION_ALLOWANCE.windowMs - now) / 1000));
-  return new Response(null, { status: 429, headers: { 'Retry-After': String(retrySeconds) } });
+  return Math.max(1, recent[0] + LICENSE_VERIFICATION_ALLOWANCE.windowMs - now);
 }
 
 function readAttempts(): number[] {
@@ -45,20 +49,23 @@ function readAttempts(): number[] {
   } catch { return []; }
 }
 
-function reserveAttempt(now = Date.now()): Response | null {
+function reserveAttempt(now = Date.now()): number | null {
   const blockedUntil = Number(localStorage.getItem(BLOCKED_UNTIL_KEY));
-  if (Number.isFinite(blockedUntil) && blockedUntil > now) return new Response(null, { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil((blockedUntil - now) / 1000))) } });
+  if (Number.isFinite(blockedUntil) && blockedUntil > now) return blockedUntil - now;
   const attempts = readAttempts().filter((attempt) => attempt > now - LICENSE_VERIFICATION_ALLOWANCE.windowMs && attempt <= now);
-  const limited = localRateLimitResponse(attempts, now);
+  const limited = localRetryAfterMs(attempts, now);
   if (limited) return limited;
   localStorage.setItem(ATTEMPTS_KEY, JSON.stringify([...attempts, now]));
   return null;
 }
 
-function rateLimitNotice(response: Response): string {
-  const retry = retryAfterMs(response.headers.get('Retry-After'));
+function pacingNotice(retry: number): string {
   localStorage.setItem(BLOCKED_UNTIL_KEY, String(Date.now() + retry));
-  return `Too many license checks. Try again in ${formatRetry(retry)}.`;
+  return `Wait ${formatRetry(retry)} before checking another license.`;
+}
+
+function upstreamRateLimitNotice(response: Response): string {
+  return pacingNotice(retryAfterMs(response.headers.get('Retry-After')));
 }
 
 export function initialLicense(): LicenseState {
@@ -83,15 +90,15 @@ export async function verifyLicense(state: LicenseState): Promise<LicenseState> 
     const cached = cachedVerdict(state.token);
     if (cached?.checkedAt && Date.now() - cached.checkedAt < 86_400_000) return { ...state, checking: false, unlocked: Boolean(cached.valid) };
     const limited = reserveAttempt();
-    if (limited) return { ...state, checking: false, notice: rateLimitNotice(limited) };
+    if (limited) return { ...state, checking: false, notice: pacingNotice(limited) };
     const response = await fetch(`${API}/api/v1/products/${SLUG}/verify?license=${encodeURIComponent(state.token)}`);
-    if (response.status === 429) return { ...state, checking: false, notice: rateLimitNotice(response) };
-    if (!response.ok) throw new Error('verification unavailable');
+    if (response.status === 429) return { ...state, checking: false, notice: upstreamRateLimitNotice(response) };
+    if (!response.ok) return { ...state, checking: false, notice: 'License verification is temporarily unavailable. Your free workspace remains available.' };
     const result = await response.json() as { valid: boolean; reason?: string };
     localStorage.setItem(CACHE_KEY, JSON.stringify({ token: state.token, valid: result.valid, checkedAt: Date.now() }));
     return { ...state, checking: false, unlocked: result.valid, notice: result.valid ? 'Cartographer Pro unlocked.' : 'License no longer active. The free workspace is still available.' };
   } catch {
-    return { ...state, checking: false, notice: state.unlocked ? 'Offline — using the last verified license.' : 'Could not verify this license. Check your connection and try again.' };
+    return { ...state, checking: false, notice: state.unlocked ? 'Offline — using the last verified license.' : 'License verification is temporarily unavailable. Your free workspace remains available.' };
   }
 }
 
