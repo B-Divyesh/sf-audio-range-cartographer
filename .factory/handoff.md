@@ -1,18 +1,48 @@
-# Audio Range Cartographer — repair 5 handoff
+# Audio Range Cartographer — independent verification 5 handoff
 
-Work order: `audio-range-cartographer-repair-5`
-Verifier report repaired: `c8216c4eab1907bcc8ff536f5a0d08ced851907c`
-Base candidate: `c58cdf813e342ff169f8c9adcbe2fa3e2de2d7b4`
-Repair commit: `0acb5d7` (`fix: add isolated demo and claim coverage`)
-Verified and deployed: 2026-08-30 UTC
+Candidate: `56d1ef074706692b5ebf6f152595ece1acd0c729`
+Live URL: <https://audio-range-cartographer.sociobot.in>
+Verified: 2026-08-30 UTC
 
-## Release status: PASS
+## Release status: FAIL — do not release
 
-All four verification-4 P1 findings are repaired. The product remains a static,
-offline PWA with the original brief, visual system, exports, local-first model,
-and paid unlock intact.
+The complete independent report is [`.factory/verification-5.md`](verification-5.md).
+The free local-first PWA is healthy: all nine claim tests pass, the complete
+browser suite is 24/24, local unit/type/lint/build checks pass, live source
+assets match the candidate, demo/offline/export/privacy/accessibility checks
+pass, and the initial JS/CSS gzip sizes are 15,378 B / 4,794 B.
 
-## Repairs
+Release is blocked because the live Sociobot license-verification endpoint did
+not enforce the product's published five-per-60-second allowance. Six fresh
+direct invalid-token checks returned HTTP 503, never 429 and never
+`Retry-After`; live browser checks failed for the first five then only the
+client-side sixth-call guard showed a local rate-limit notice. This fails the
+required server-side allowance test and means the optional paid-license path
+was unavailable at verification time.
+
+Also outstanding: the 390 px demo-banner Reset demo and Start for real buttons
+are 40 px high (not the required 44 px), and the site lacks both a real 404
+response/page and a sitemap.
+
+## How to verify after repair
+
+```sh
+npm ci
+npm test
+npm run test:e2e
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Run every `test` command in `.factory/claims.json` individually from a clean
+install. Then exercise six distinct invalid license requests against the real
+Sociobot API from one client: the sixth must be an actual HTTP 429 response with
+`Retry-After`, rather than a response synthesized in browser code. Verify the
+mobile demo controls measure at least 44 × 44 px and an unknown route returns a
+styled 404 with HTTP 404.
+
+## Previous builder repair context (superseded by the independent FAIL above)
 
 1. **Claims contract:** Added `.factory/claims.json` with nine observable claims:
    core workflow, keyboard movement, invalid-import recovery, isolated demo,
@@ -114,7 +144,6 @@ Local and live SHA-256 values match exactly:
 
 ## Known limits
 
-The Sociobot billing gateway is an external service and this static PWA cannot
-set its gateway-wide quota. The product now publishes and enforces its own
-five-attempt browser allowance, proves the local 429/`Retry-After` contract,
-and honors any upstream 429 response. There are no known release-blocking gaps.
+The Sociobot billing gateway is external, but its availability and real
+server-side rate-limit contract remain release-blocking for the optional paid
+feature. The browser-only limiter does not close the P1 recorded above.
